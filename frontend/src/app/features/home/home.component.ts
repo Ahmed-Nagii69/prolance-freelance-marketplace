@@ -11,10 +11,17 @@ import { SkillTags } from '../../shared/components/skill-tags/skill-tags.compone
 import { LoadingBlock } from '../../shared/components/loading/loading.component';
 import { EmptyState } from '../../shared/components/empty-state/empty-state.component';
 
+interface NextStep {
+  step: string;
+  title: string;
+  detail: string;
+  link: (string | number)[];
+}
+
 @Component({
   selector: 'pl-home',
   standalone: true,
-  imports: [RouterLink, StatusBadge, SkillTags, LoadingBlock, EmptyState,],
+  imports: [RouterLink, StatusBadge, SkillTags, LoadingBlock, EmptyState],
   template: `
     <section class="pl-hero">
       <div class="pl-container">
@@ -104,6 +111,39 @@ import { EmptyState } from '../../shared/components/empty-state/empty-state.comp
         </div>
       </div>
     </section>
+
+    @if (user()) {
+      <section class="pl-section" style="padding-bottom: 0">
+        <div class="pl-container">
+          <div
+            class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4"
+          >
+            <div>
+              <p class="pl-kicker">Where to start</p>
+              <h2 class="pl-headline mb-0">Your path on ProLance</h2>
+            </div>
+          </div>
+          <div class="row g-4">
+            @for (step of steps(); track step.step) {
+              <div class="col-12 col-md-6 col-lg-3">
+                <a
+                  [routerLink]="step.link"
+                  class="pl-card pl-card--hover h-100"
+                  style="text-decoration: none"
+                >
+                  <p class="pl-h2 m-0" style="color: var(--pl-brass)">
+                    {{ step.step }}
+                  </p>
+                  <p class="pl-card__title">{{ step.title }}</p>
+                  <p class="pl-card__meta mb-0">{{ step.detail }}</p>
+                  <span class="pl-faded-link">Start →</span>
+                </a>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+    }
 
     <section class="pl-section pl-section--tint">
       <div class="pl-container">
@@ -266,6 +306,76 @@ export class Home {
 
   protected readonly user = computed<User | null>(() => this.auth.user());
   protected readonly formatCurrency = formatCurrency;
+
+  protected readonly steps = computed<NextStep[]>(() => {
+    switch (this.user()?.role) {
+      case 'CLIENT':
+        return [
+          {
+            step: '01',
+            title: 'Post a clear brief',
+            detail: 'Scope, budget, deadline and required skills.',
+            link: ['/projects/new'],
+          },
+          {
+            step: '02',
+            title: 'Review proposals',
+            detail: 'Shortlist the freelancer that fits best.',
+            link: ['/projects/my'],
+          },
+          {
+            step: '03',
+            title: 'Start a contract',
+            detail: 'Accept a proposal and begin the work.',
+            link: ['/contracts'],
+          },
+          {
+            step: '04',
+            title: 'Message & finish',
+            detail: 'Chat during the work, then complete and review.',
+            link: ['/messages'],
+          },
+        ];
+      case 'FREELANCER':
+        return [
+          {
+            step: '01',
+            title: 'Complete your profile',
+            detail: 'Title, bio, hourly rate and skills.',
+            link: ['/profile/freelancer'],
+          },
+          {
+            step: '02',
+            title: 'Find open work',
+            detail: 'Browse briefs and filter by your skills.',
+            link: ['/projects'],
+          },
+          {
+            step: '03',
+            title: 'Submit proposals',
+            detail: 'Price, timeline and a cover letter.',
+            link: ['/proposals/my'],
+          },
+          {
+            step: '04',
+            title: 'Deliver & get reviewed',
+            detail: 'Manage contracts and earn verified reviews.',
+            link: ['/contracts'],
+          },
+        ];
+      case 'ADMIN':
+        return [
+          {
+            step: '01',
+            title: 'Open the admin workspace',
+            detail: 'Manage users and the skill catalog.',
+            link: ['/admin'],
+          },
+        ];
+      default:
+        return [];
+    }
+  });
 
   protected readonly projectsLoading = signal(true);
   protected readonly featured = signal<Project[]>([]);

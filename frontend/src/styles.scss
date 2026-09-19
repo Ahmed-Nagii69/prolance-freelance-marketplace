@@ -249,8 +249,8 @@ a:hover {
 }
 
 .pl-btn--dark:hover:not(:disabled) {
-  background-color: #000;
-  color: #fff;
+  background-color: var(--pl-brass);
+  color: var(--pl-espresso);
 }
 
 .pl-btn--accent {
@@ -259,7 +259,8 @@ a:hover {
 }
 
 .pl-btn--accent:hover:not(:disabled) {
-  background-color: var(--pl-petrol-deep);
+  background-color: var(--pl-brass);
+  color: var(--pl-espresso);
 }
 
 .pl-btn--purple {
@@ -268,7 +269,8 @@ a:hover {
 }
 
 .pl-btn--purple:hover:not(:disabled) {
-  background-color: var(--pl-purple-deep);
+  background-color: var(--pl-brass);
+  color: var(--pl-espresso);
 }
 
 .pl-btn--outline {
@@ -279,6 +281,7 @@ a:hover {
 
 .pl-btn--outline:hover:not(:disabled) {
   border-color: var(--pl-ink);
+  background-color: var(--pl-ivory-soft);
 }
 
 .pl-btn--outline-inverse {
@@ -289,6 +292,7 @@ a:hover {
 
 .pl-btn--outline-inverse:hover:not(:disabled) {
   border-color: var(--pl-ivory);
+  background-color: rgba(245, 241, 232, 0.12);
 }
 
 .pl-btn--danger {
@@ -310,6 +314,7 @@ a:hover {
 
 .pl-btn--ghost:hover:not(:disabled) {
   color: var(--pl-ink);
+  background-color: var(--pl-ivory-soft);
 }
 
 .pl-btn--sm {
@@ -433,11 +438,13 @@ a:hover {
 .pl-card--hover {
   transition:
     border-color 150ms ease,
+    box-shadow 150ms ease,
     transform 150ms ease;
 }
 
 .pl-card--hover:hover {
-  border-color: var(--pl-line-strong);
+  border-color: var(--pl-petrol);
+  box-shadow: 0 6px 18px rgba(23, 21, 18, 0.1);
   transform: translateY(-2px);
 }
 
@@ -767,12 +774,12 @@ a:hover {
   letter-spacing: 0.02em;
 }
 
-.pl-nav__link:hover,
-.pl-nav__link.is-active {
-  color: var(--pl-ink);
+.pl-nav__link:hover {
+  color: var(--pl-petrol);
 }
 
 .pl-nav__link.is-active {
+  color: var(--pl-ink);
   border-bottom: 2px solid var(--pl-petrol);
   padding-bottom: 2px;
 }
@@ -1055,7 +1062,7 @@ a:hover {
 }
 
 .pl-faded-link:hover {
-  color: var(--pl-ink);
+  color: var(--pl-petrol);
 }
 
 .pl-avatar--sm {
@@ -1104,6 +1111,7 @@ a:hover {
 
 .pl-chip:hover {
   border-color: var(--pl-petrol);
+  background-color: rgba(36, 92, 90, 0.08);
   color: var(--pl-petrol);
 }
 
@@ -1132,7 +1140,7 @@ a:hover {
 }
 
 .pl-tab:hover {
-  color: var(--pl-ink);
+  color: var(--pl-petrol);
 }
 
 .pl-tab.is-active {
