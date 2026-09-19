@@ -17,9 +17,6 @@ import { MessagesHub } from './features/messages/messages-hub/messages-hub.compo
 import { ProjectConversation } from './features/messages/project-conversation/project-conversation.component';
 import { ProfileHome } from './features/profile/profile-home/profile-home.component';
 import { FreelancerProfilePage } from './features/profile/freelancer-profile/freelancer-profile.component';
-import { ServicesBrowse } from './features/services/services-browse/services-browse.component';
-import { ServiceForm } from './features/services/service-form/service-form.component';
-import { SkillsBrowse } from './features/skills/skills-browse/skills-browse.component';
 import { UserProfile } from './features/users/user-profile/user-profile.component';
 import { AdminWorkspace } from './features/admin/admin-workspace/admin-workspace.component';
 
@@ -77,11 +74,11 @@ export const routes: Routes = [
         canActivate: [authGuard],
       },
       { path: 'contracts', component: Contracts, canActivate: [authGuard] },
-      { path: 'messages', component: MessagesHub, canActivate: [authGuard] },
+      { path: 'messages', component: MessagesHub, canActivate: [authGuard, roleGuard(['CLIENT', 'FREELANCER'])] },
       {
         path: 'messages/project/:projectId',
         component: ProjectConversation,
-        canActivate: [authGuard],
+        canActivate: [authGuard, roleGuard(['CLIENT', 'FREELANCER'])],
       },
       { path: 'profile', component: ProfileHome, canActivate: [authGuard] },
       {
@@ -89,13 +86,6 @@ export const routes: Routes = [
         component: FreelancerProfilePage,
         canActivate: [authGuard, roleGuard(['FREELANCER'])],
       },
-      { path: 'services', component: ServicesBrowse },
-      {
-        path: 'services/new',
-        component: ServiceForm,
-        canActivate: [authGuard, roleGuard(['FREELANCER'])],
-      },
-      { path: 'skills', component: SkillsBrowse },
       {
         path: 'users/:id',
         component: UserProfile,

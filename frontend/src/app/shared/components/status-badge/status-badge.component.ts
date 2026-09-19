@@ -19,6 +19,9 @@ export class StatusBadge {
     if (status.includes('progress')) {
       return 'pl-status--in-progress';
     }
+    if (status.includes('submitted')) {
+      return 'pl-status--submitted';
+    }
     if (status.includes('completed')) {
       return 'pl-status--completed';
     }

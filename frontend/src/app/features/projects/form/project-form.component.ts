@@ -109,8 +109,8 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
                       placeholder="typescript, react, node"
                     />
                     <span class="pl-hint">
-                      These match the platform skill catalog and help freelancers
-                      find your project.
+                      These are free-form tags that help freelancers find your
+                      project.
                     </span>
                   </div>
 

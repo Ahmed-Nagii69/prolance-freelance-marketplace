@@ -1,7 +1,11 @@
 const Proposal = require("../models/Proposal");
 const Project = require("../models/Project");
 const Contract = require("../models/Contract");
+const User = require("../models/User");
 const sendResponse = require("../utils/response");
+const { changeBalance } = require("../utils/ledger");
+const { createNotification } = require("../utils/notify");
+const { toCents, exceedBudgetValidation } = require("../utils/proposalValidation");
 
 const createProposal = async (req, res, next) => {
   try {
@@ -47,6 +51,16 @@ const createProposal = async (req, res, next) => {
       });
     }
 
+    const budgetError = exceedBudgetValidation(
+      toCents(parsedPrice),
+      toCents(projectExists.budget),
+    );
+    if (budgetError) {
+      return sendResponse(res, 400, budgetError, null, {
+        code: "VALIDATION_ERROR",
+      });
+    }
+
     const existingProposal = await Proposal.findOne({
       project,
       freelancer: req.user._id,
@@ -67,6 +81,14 @@ const createProposal = async (req, res, next) => {
       coverLetter: coverLetter.trim(),
       price: parsedPrice,
       deliveryTime: parsedDeliveryTime,
+    });
+
+    await createNotification({
+      user: projectExists.client,
+      actor: req.user._id,
+      type: "PROPOSAL",
+      message: `${req.user.name} submitted a proposal for "${projectExists.title}"`,
+      link: `/projects/${projectExists._id}/proposals`,
     });
 
     return sendResponse(res, 201, "Proposal submitted successfully", proposal);
@@ -192,7 +214,9 @@ const getProposalById = async (req, res, next) => {
 
 const acceptProposal = async (req, res, next) => {
   try {
-    const proposal = await Proposal.findById(req.params.id).populate("project");
+    const proposal = await Proposal.findById(req.params.id)
+      .populate("project")
+      .populate("freelancer", "name");
 
     if (!proposal) {
       return sendResponse(res, 404, "Proposal not found", null, {
@@ -228,6 +252,23 @@ const acceptProposal = async (req, res, next) => {
       });
     }
 
+    const clientUser = await User.findById(proposal.project.client);
+    if (!clientUser || clientUser.balance < proposal.price) {
+      return sendResponse(
+        res,
+        400,
+        "You do not have enough balance to accept this proposal. Add funds to your wallet first.",
+        null,
+        { code: "INSUFFICIENT_BALANCE" },
+      );
+    }
+
+    const competitorProposals = await Proposal.find({
+      project: proposal.project._id,
+      _id: { $ne: proposal._id },
+      status: "PENDING",
+    }).select("freelancer");
+
     const acceptedProposal = await Proposal.findOneAndUpdate(
       { _id: proposal._id, status: "PENDING" },
       { status: "ACCEPTED" },
@@ -251,7 +292,7 @@ const acceptProposal = async (req, res, next) => {
     const deadline = new Date(
       Date.now() + proposal.deliveryTime * 24 * 60 * 60 * 1000,
     );
-    await Contract.create({
+    const contract = await Contract.create({
       project: proposal.project._id,
       proposal: proposal._id,
       client: proposal.project.client,
@@ -262,9 +303,45 @@ const acceptProposal = async (req, res, next) => {
       status: "ACTIVE",
     });
 
+    await changeBalance({
+      userId: clientUser._id,
+      type: "DEBIT",
+      amount: proposal.price,
+      contract: contract._id,
+      project: proposal.project._id,
+      description: `Funds held for contract with ${proposal.freelancer.name || "freelancer"}`,
+    });
+    contract.heldAmount = proposal.price;
+    await contract.save();
+
     await Project.findByIdAndUpdate(proposal.project._id, {
       status: "IN_PROGRESS",
     });
+
+    await createNotification({
+      user: proposal.freelancer._id,
+      type: "PROPOSAL_ACCEPTED",
+      message: `Your proposal for "${proposal.project.title}" was accepted`,
+      link: `/contracts/${contract._id}`,
+      actor: req.user._id,
+    });
+    await createNotification({
+      user: proposal.freelancer._id,
+      type: "CONTRACT_CREATED",
+      message: `A contract has started for "${proposal.project.title}"`,
+      link: `/contracts/${contract._id}`,
+      actor: req.user._id,
+    });
+
+    for (const competitor of competitorProposals) {
+      await createNotification({
+        user: competitor.freelancer,
+        type: "PROPOSAL_REJECTED",
+        message: `Your proposal for "${proposal.project.title}" was not selected`,
+        link: "/proposals/my",
+        actor: req.user._id,
+      });
+    }
 
     return sendResponse(res, 200, "Proposal accepted successfully", acceptedProposal);
   } catch (error) {
@@ -306,6 +383,14 @@ const rejectProposal = async (req, res, next) => {
 
     proposal.status = "REJECTED";
     await proposal.save();
+
+    await createNotification({
+      user: proposal.freelancer,
+      actor: req.user._id,
+      type: "PROPOSAL_REJECTED",
+      message: `Your proposal for "${proposal.project.title}" was rejected`,
+      link: "/proposals/my",
+    });
 
     return sendResponse(res, 200, "Proposal rejected successfully", proposal);
   } catch (error) {

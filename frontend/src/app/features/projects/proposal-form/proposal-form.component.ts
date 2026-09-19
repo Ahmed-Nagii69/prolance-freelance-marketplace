@@ -1,8 +1,9 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ProposalService } from '../../../core/services/resource.services';
 import { ToastService } from '../../../core/services/toast.service';
 import { extractApiMessage } from '../../../core/utils/http-error';
+import { formatCurrency } from '../../../core/utils/format';
 
 @Component({
   selector: 'pl-submit-proposal',
@@ -34,9 +35,24 @@ import { extractApiMessage } from '../../../core/utils/http-error';
               class="pl-input"
               required
               min="1"
+              [attr.max]="budget() ?? null"
               [(ngModel)]="price"
               name="price"
             />
+            @if (budget() !== null) {
+              <p class="pl-field-hint">
+                Budget: {{ formatCurrency(budget()!) }}
+              </p>
+              @if (budgetExceeded()) {
+                <p
+                  class="pl-field-hint"
+                  style="color: var(--pl-burgundy); font-weight: 600"
+                >
+                  Your bid cannot exceed the project budget
+                  ({{ formatCurrency(budget()!) }}).
+                </p>
+              }
+            }
           </div>
         </div>
         <div class="col-12 col-sm-6">
@@ -82,6 +98,7 @@ export class SubmitProposal {
   private readonly toast = inject(ToastService);
 
   readonly projectId = input('');
+  readonly budget = input<number | null>(null);
   readonly submitted = output<void>();
 
   protected readonly coverLetter = signal('');
@@ -89,6 +106,17 @@ export class SubmitProposal {
   protected readonly deliveryTime = signal<number | string>('');
   protected readonly submitting = signal(false);
   protected readonly error = signal('');
+
+  protected readonly formatCurrency = formatCurrency;
+
+  protected readonly budgetExceeded = computed(() => {
+    const budget = this.budget();
+    if (budget === null) {
+      return false;
+    }
+    const value = Number(this.price());
+    return Number.isFinite(value) && value > 0 && value > budget;
+  });
 
   submit(): void {
     if (
@@ -98,6 +126,12 @@ export class SubmitProposal {
       !this.deliveryTime()
     ) {
       this.error.set('Cover letter, price and delivery time are required.');
+      return;
+    }
+    if (this.budgetExceeded()) {
+      this.error.set(
+        `Your bid cannot exceed the project budget of ${formatCurrency(this.budget()!)}.`,
+      );
       return;
     }
     this.submitting.set(true);

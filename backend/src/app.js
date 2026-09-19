@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -8,8 +9,8 @@ const proposalRoutes = require("./routes/proposalRoutes");
 const contractRoutes = require("./routes/contractRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const messageRoutes = require("./routes/messageRoutes");
-const skillRoutes = require("./routes/skillRoutes");
-const serviceRoutes = require("./routes/serviceRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const walletRoutes = require("./routes/walletRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const sendResponse = require("./utils/response");
 const mongoose = require("mongoose");
@@ -44,8 +45,10 @@ app.use("/api/proposals", proposalRoutes);
 app.use("/api/contracts", contractRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/skills", skillRoutes);
-app.use("/api/services", serviceRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/wallet", walletRoutes);
+
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
 app.use((req, res) => {
   return sendResponse(res, 404, "Route not found", null, { code: "NOT_FOUND" });

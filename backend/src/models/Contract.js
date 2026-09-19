@@ -38,8 +38,38 @@ const contractSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["ACTIVE", "COMPLETED", "CANCELLED"],
+      enum: ["ACTIVE", "WORK_SUBMITTED", "COMPLETED", "CANCELLED"],
       default: "ACTIVE",
+    },
+    workSubmission: {
+      description: {
+        type: String,
+        maxlength: 5000,
+        default: "",
+      },
+      submittedAt: {
+        type: Date,
+        default: null,
+      },
+      submittedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+    },
+    workFeedback: {
+      type: String,
+      maxlength: 1000,
+      default: "",
+    },
+    heldAmount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    paymentReleased: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true },

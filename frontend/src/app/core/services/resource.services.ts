@@ -5,14 +5,14 @@ import { ApiService } from './api.service';
 import {
   Contract,
   ContractListData,
-  Message,
-  MessageListData,
   Proposal,
   ProposalListData,
   Review,
   ReviewListData,
-  Service,
-  Skill,
+  Message,
+  MessageListData,
+  NotificationListData,
+  WalletData,
 } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
@@ -78,6 +78,22 @@ export class ContractService {
   cancelContract(id: string): Observable<Contract> {
     return this.api.patch<Contract>(`/contracts/${id}/cancel`, {});
   }
+
+  submitWork(id: string, description: string): Observable<Contract> {
+    return this.api.patch<Contract>(`/contracts/${id}/submit-work`, {
+      description,
+    });
+  }
+
+  approveWork(id: string): Observable<Contract> {
+    return this.api.patch<Contract>(`/contracts/${id}/approve-work`, {});
+  }
+
+  rejectWork(id: string, reason?: string): Observable<Contract> {
+    return this.api.patch<Contract>(`/contracts/${id}/reject-work`, {
+      reason: reason ?? '',
+    });
+  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -107,6 +123,10 @@ export class MessageService {
   markMessageAsRead(id: string): Observable<Message> {
     return this.api.patch<Message>(`/messages/${id}/read`, {});
   }
+
+  getUnreadCount(): Observable<{ unreadCount: number }> {
+    return this.api.get<{ unreadCount: number }>('/messages/unread-count');
+  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -121,6 +141,14 @@ export class ReviewService {
     return this.api.post<Review>('/reviews', payload);
   }
 
+  getContractReviewStatus(
+    contractId: string,
+  ): Observable<{ reviewed: boolean }> {
+    return this.api.get<{ reviewed: boolean }>(
+      `/reviews/contract/${contractId}/me`,
+    );
+  }
+
   getUserReviews(id: string, page = 1, limit = 20): Observable<ReviewListData> {
     const params = new HttpParams().set('page', page).set('limit', limit);
     return this.api.get<ReviewListData>(`/reviews/user/${id}`, params);
@@ -128,35 +156,38 @@ export class ReviewService {
 }
 
 @Injectable({ providedIn: 'root' })
-export class SkillService {
+export class WalletService {
   constructor(private readonly api: ApiService) {}
 
-  getSkills(): Observable<Skill[]> {
-    return this.api.get<Skill[]>('/skills');
+  getWallet(): Observable<WalletData> {
+    return this.api.get<WalletData>('/wallet');
   }
 
-  createSkill(payload: {
-    name: string;
-    description?: string;
-  }): Observable<Skill> {
-    return this.api.post<Skill>('/skills', payload);
+  fundWallet(amount: number): Observable<{ balance: number; amount: number }> {
+    return this.api.post<{ balance: number; amount: number }>('/wallet/fund', {
+      amount,
+    });
   }
 }
 
 @Injectable({ providedIn: 'root' })
-export class ServiceService {
+export class NotificationService {
   constructor(private readonly api: ApiService) {}
 
-  getServices(): Observable<Service[]> {
-    return this.api.get<Service[]>('/services');
+  getNotifications(page = 1, limit = 20): Observable<NotificationListData> {
+    const params = new HttpParams().set('page', page).set('limit', limit);
+    return this.api.get<NotificationListData>('/notifications', params);
   }
 
-  createService(payload: {
-    title: string;
-    description: string;
-    price: number;
-    skills: string[];
-  }): Observable<Service> {
-    return this.api.post<Service>('/services', payload);
+  getUnreadCount(): Observable<{ unreadCount: number }> {
+    return this.api.get<{ unreadCount: number }>('/notifications/unread-count');
+  }
+
+  markAsRead(id: string): Observable<null> {
+    return this.api.patch<null>(`/notifications/${id}/read`, {});
+  }
+
+  markAllAsRead(): Observable<null> {
+    return this.api.patch<null>('/notifications/read-all', {});
   }
 }

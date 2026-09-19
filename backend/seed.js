@@ -3,12 +3,13 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const User = require("./src/models/User");
 const FreelancerProfile = require("./src/models/FreelancerProfile");
-const Skill = require("./src/models/Skill");
 const Project = require("./src/models/Project");
 const Proposal = require("./src/models/Proposal");
 const Contract = require("./src/models/Contract");
 const Message = require("./src/models/Message");
 const Review = require("./src/models/Review");
+const Transaction = require("./src/models/Transaction");
+const Notification = require("./src/models/Notification");
 
 const DAY = 24 * 60 * 60 * 1000;
 const future = (days) => new Date(Date.now() + days * DAY);
@@ -20,43 +21,19 @@ async function run() {
   const collections = [
     User,
     FreelancerProfile,
-    Skill,
     Project,
     Proposal,
     Contract,
     Message,
     Review,
+    Transaction,
+    Notification,
   ];
 
   console.log("Wiping collections ...");
   for (const model of collections) {
     await model.deleteMany({});
   }
-
-  console.log("Seeding skills ...");
-  const skillNames = [
-    "node",
-    "react",
-    "angular",
-    "typescript",
-    "javascript",
-    "python",
-    "sql",
-    "devops",
-    "ux research",
-    "ui design",
-    "figma",
-    "branding",
-    "illustration",
-    "copywriting",
-    "seo",
-  ];
-  const skills = [];
-  for (const name of skillNames) {
-    const [skill] = await Skill.create([{ name, description: `Proficient in ${name}.` }]);
-    skills.push(skill);
-  }
-  const byName = Object.fromEntries(skills.map((s) => [s.name, s._id]));
 
   console.log("Seeding users ...");
   const admin = await User.create({
@@ -73,6 +50,7 @@ async function run() {
     password: await hash("Password123!"),
     role: "CLIENT",
     bio: "Product lead at a fast-growing fintech.",
+    balance: 14100,
   });
   const clientArjun = await User.create({
     name: "Arjun Mehta",
@@ -80,6 +58,7 @@ async function run() {
     password: await hash("Password123!"),
     role: "CLIENT",
     bio: "Founder of a speciality coffee brand.",
+    balance: 6800,
   });
 
   const freDana = await User.create({
@@ -89,6 +68,7 @@ async function run() {
     role: "FREELANCER",
     bio: "Full-stack engineer building reliable web products.",
     skills: ["typescript", "react", "node"],
+    balance: 5900,
   });
   const freNoor = await User.create({
     name: "Noor Haddad",
@@ -239,6 +219,7 @@ async function run() {
     startDate: future(-5),
     deadline: future(10),
     status: "ACTIVE",
+    heldAmount: propNoorBrand.price,
   });
   const contractTracker = await Contract.create({
     project: pTracker._id,
@@ -249,6 +230,8 @@ async function run() {
     startDate: future(-40),
     deadline: future(-8),
     status: "COMPLETED",
+    heldAmount: propDanaTracker.price,
+    paymentReleased: true,
   });
 
   console.log("Seeding messages ...");
@@ -294,6 +277,69 @@ async function run() {
     },
   ]);
 
+  console.log("Seeding transactions ...");
+  await Transaction.create([
+    {
+      user: freDana._id,
+      type: "CREDIT",
+      amount: propDanaTracker.price,
+      balanceAfter: 5900,
+      contract: contractTracker._id,
+      project: pTracker._id,
+      description: "Payment received for completed contract",
+    },
+    {
+      user: clientAmara._id,
+      type: "DEBIT",
+      amount: propDanaTracker.price,
+      balanceAfter: 14100,
+      contract: contractTracker._id,
+      project: pTracker._id,
+      description: "Contract payment",
+    },
+    {
+      user: clientArjun._id,
+      type: "DEBIT",
+      amount: propNoorBrand.price,
+      balanceAfter: 6800,
+      contract: contractBrand._id,
+      project: pBrand._id,
+      description: "Funds held for contract with Noor Haddad",
+    },
+  ]);
+
+  console.log("Seeding notifications ...");
+  await Notification.create([
+    {
+      user: clientAmara._id,
+      actor: freDana._id,
+      type: "PROPOSAL",
+      message: `Dana Cole submitted a proposal for "${pStorefront.title}"`,
+      link: `/projects/${pStorefront._id}/proposals`,
+    },
+    {
+      user: freDana._id,
+      actor: clientAmara._id,
+      type: "MESSAGE",
+      message: `Amara Okafor sent you a message about "${pStorefront.title}"`,
+      link: `/messages/project/${pStorefront._id}`,
+    },
+    {
+      user: freNoor._id,
+      actor: clientArjun._id,
+      type: "PROPOSAL_ACCEPTED",
+      message: `Your proposal for "${pBrand.title}" was accepted`,
+      link: `/contracts/${contractBrand._id}`,
+    },
+    {
+      user: clientArjun._id,
+      actor: freNoor._id,
+      type: "WORK_SUBMITTED",
+      message: `Noor Haddad submitted work for "${pBrand.title}". Review it to release the payment.`,
+      link: `/contracts/${contractBrand._id}`,
+    },
+  ]);
+
   console.log("Done.");
   console.log(
     JSON.stringify(
@@ -301,7 +347,6 @@ async function run() {
         admin: { email: "admin@prolance.dev", password: "AdminPass123!" },
         client: { email: "client@prolance.dev", password: "Password123!" },
         freelancer: { email: "freelancer@prolance.dev", password: "Password123!" },
-        skills: skills.length,
         projects: 5,
         proposals: 5,
         contracts: { active: 1, completed: 1 },

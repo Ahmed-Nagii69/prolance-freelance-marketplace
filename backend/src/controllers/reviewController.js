@@ -1,6 +1,7 @@
 const Review = require("../models/Review");
 const Contract = require("../models/Contract");
 const sendResponse = require("../utils/response");
+const { createNotification } = require("../utils/notify");
 
 const createReview = async (req, res, next) => {
   try {
@@ -89,7 +90,51 @@ const createReview = async (req, res, next) => {
       comment: comment.trim(),
     });
 
+    await createNotification({
+      user: reviewee,
+      actor: req.user._id,
+      type: "REVIEW",
+      message: `${req.user.name} left you a ${parsedRating}-star review`,
+      link: `/users/${reviewee}`,
+    });
+
     return sendResponse(res, 201, "Review created successfully", review);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getContractReviewStatus = async (req, res, next) => {
+  try {
+    const contract = await Contract.findById(req.params.contractId);
+
+    if (!contract) {
+      return sendResponse(res, 404, "Contract not found", null, {
+        code: "CONTRACT_NOT_FOUND",
+      });
+    }
+
+    const isParty =
+      contract.client.toString() === req.user._id.toString() ||
+      contract.freelancer.toString() === req.user._id.toString();
+    if (!isParty) {
+      return sendResponse(
+        res,
+        403,
+        "You are not allowed to view reviews for this contract",
+        null,
+        { code: "FORBIDDEN" },
+      );
+    }
+
+    const existingReview = await Review.findOne({
+      contract: req.params.contractId,
+      reviewer: req.user._id,
+    }).select("_id");
+
+    return sendResponse(res, 200, "Review status fetched successfully", {
+      reviewed: Boolean(existingReview),
+    });
   } catch (error) {
     return next(error);
   }
@@ -129,5 +174,6 @@ const getUserReviews = async (req, res, next) => {
 
 module.exports = {
   createReview,
+  getContractReviewStatus,
   getUserReviews,
 };

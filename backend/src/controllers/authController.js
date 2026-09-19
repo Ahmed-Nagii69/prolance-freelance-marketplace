@@ -97,6 +97,7 @@ const register = async (req, res, next) => {
         bio: user.bio,
         skills: user.skills,
         profileImage: user.profileImage,
+        balance: user.balance,
       },
       token,
     });
@@ -343,6 +344,7 @@ const login = async (req, res, next) => {
         bio: user.bio,
         skills: user.skills,
         profileImage: user.profileImage,
+        balance: user.balance,
       },
       token,
     });

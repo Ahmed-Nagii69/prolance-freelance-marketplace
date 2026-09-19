@@ -21,6 +21,12 @@ export class UserService {
     return this.api.put<User>('/users/profile', payload);
   }
 
+  uploadProfilePhoto(file: File): Observable<User> {
+    const formData = new FormData();
+    formData.append('photo', file, file.name);
+    return this.api.post<User>('/users/profile/photo', formData);
+  }
+
   getFreelancerProfile(): Observable<FreelancerProfile> {
     return this.api.get<FreelancerProfile>('/users/freelancer-profile');
   }

@@ -2,12 +2,10 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {
   ReviewService,
-  ServiceService,
 } from '../../../core/services/resource.services';
 import { UserService } from '../../../core/services/user.service';
-import { Review, ReviewListData, Service, User } from '../../../core/models/models';
+import { Review, ReviewListData, User } from '../../../core/models/models';
 import {
-  formatCurrency,
   formatDate,
   initialsOf,
   roleDisplay,
@@ -38,7 +36,13 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
       <div class="pl-page-title">
         <div class="pl-container">
           <div class="d-flex align-items-center gap-3 flex-wrap">
-            <span class="pl-avatar pl-avatar--xl">{{ initialsOf(user()!.name) }}</span>
+            <span class="pl-avatar pl-avatar--xl">
+              @if (user()!.profileImage) {
+                <img [src]="user()!.profileImage" alt="" />
+              } @else {
+                {{ initialsOf(user()!.name) }}
+              }
+            </span>
             <div>
               <h1 class="pl-headline mb-1">{{ user()!.name }}</h1>
               <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -112,27 +116,6 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
             </div>
 
             <div class="col-12 col-lg-4">
-              @if (services().length > 0) {
-                <div class="pl-panel mb-4" style="top: 90px">
-                  <p class="pl-label">Services</p>
-                  <div class="d-flex flex-column gap-3">
-                    @for (service of services(); track service._id) {
-                      <div>
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                          <p class="mb-0 fw-semibold" style="font-size: 0.92rem">
-                            {{ service.title }}
-                          </p>
-                          <span class="pl-faded-link" style="font-size: 0.85rem">
-                            {{ formatCurrency(service.price) }}
-                          </span>
-                        </div>
-                        <pl-skill-tags [skillsObjects]="service.skills" />
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-
               <div class="pl-panel" style="top: 90px">
                 <p class="pl-label">Skills</p>
                 @if (user()!.skills.length === 0) {
@@ -152,13 +135,11 @@ export class UserProfile {
   private readonly route = inject(ActivatedRoute);
   private readonly userService = inject(UserService);
   private readonly reviewService = inject(ReviewService);
-  private readonly serviceService = inject(ServiceService);
 
   protected readonly loading = signal(true);
   protected readonly user = signal<User | null>(null);
   protected readonly reviews = signal<Review[]>([]);
   protected readonly pagination = signal<NonNullable<ReviewListData>['pagination'] | null>(null);
-  protected readonly services = signal<Service[]>([]);
 
   protected readonly averageRating = computed(() => {
     const items = this.reviews();
@@ -169,7 +150,6 @@ export class UserProfile {
     () => this.pagination()?.total ?? 0,
   );
 
-  protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;
   protected readonly initialsOf = initialsOf;
   protected readonly roleDisplay = roleDisplay;
@@ -180,7 +160,6 @@ export class UserProfile {
       next: (user) => {
         this.user.set(user);
         this.fetchReviews(1);
-        this.fetchServices(user._id);
       },
       error: () => this.loading.set(false),
     });
@@ -195,21 +174,6 @@ export class UserProfile {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
-    });
-  }
-
-  private fetchServices(id: string): void {
-    this.serviceService.getServices().subscribe({
-      next: (services) => {
-        this.services.set(
-          services.filter(
-            (service) =>
-              typeof service.freelancer === 'object' &&
-              service.freelancer._id === id,
-          ),
-        );
-      },
-      error: () => void 0,
     });
   }
 

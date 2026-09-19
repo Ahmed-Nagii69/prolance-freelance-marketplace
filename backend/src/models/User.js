@@ -59,6 +59,11 @@ const userSchema = new mongoose.Schema(
       maxlength: 1000,
       default: "",
     },
+    balance: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
   },
   { timestamps: true },
 );

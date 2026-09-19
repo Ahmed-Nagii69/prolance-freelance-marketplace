@@ -1,7 +1,11 @@
 export type Role = 'CLIENT' | 'FREELANCER' | 'ADMIN';
 export type ProjectStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 export type ProposalStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
-export type ContractStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+export type ContractStatus =
+  | 'ACTIVE'
+  | 'WORK_SUBMITTED'
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 export interface ApiError {
   code: string;
@@ -31,6 +35,7 @@ export interface User {
   bio: string;
   skills: string[];
   profileImage: string;
+  balance?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -55,25 +60,6 @@ export interface FreelancerProfile {
   bio: string;
   hourlyRate: number;
   skills: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Skill {
-  _id: string;
-  name: string;
-  description: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Service {
-  _id: string;
-  title: string;
-  description: string;
-  price: number;
-  freelancer: User;
-  skills: Skill[];
   createdAt: string;
   updatedAt: string;
 }
@@ -143,12 +129,72 @@ export interface Contract {
   startDate: string;
   deadline: string;
   status: ContractStatus;
+  workSubmission?: {
+    description: string;
+    submittedAt: string | null;
+    submittedBy: User | string | null;
+  } | null;
+  workFeedback?: string;
+  heldAmount?: number;
+  paymentReleased?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ContractListData {
   contracts: Contract[];
+  pagination: Pagination;
+}
+
+export type TransactionType = 'CREDIT' | 'DEBIT';
+
+export interface Transaction {
+  _id: string;
+  user: string;
+  type: TransactionType;
+  amount: number;
+  balanceAfter: number | null;
+  contract: { status: ContractStatus } | string | null;
+  project: { title: string } | string | null;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WalletData {
+  balance: number;
+  transactions: Transaction[];
+}
+
+export type NotificationType =
+  | 'PROPOSAL'
+  | 'PROPOSAL_ACCEPTED'
+  | 'PROPOSAL_REJECTED'
+  | 'CONTRACT_CREATED'
+  | 'CONTRACT_UPDATED'
+  | 'WORK_SUBMITTED'
+  | 'WORK_APPROVED'
+  | 'WORK_REJECTED'
+  | 'PAYMENT_RECEIVED'
+  | 'MESSAGE'
+  | 'REVIEW'
+  | 'SYSTEM';
+
+export interface Notification {
+  _id: string;
+  user: string;
+  actor: User | null;
+  type: NotificationType;
+  message: string;
+  link: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationListData {
+  notifications: Notification[];
+  unreadCount: number;
   pagination: Pagination;
 }
 

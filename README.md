@@ -4,7 +4,7 @@ End-to-end freelance marketplace: clients post projects and hire freelancers, fr
 
 Monorepo with two apps:
 
-- `backend/` — Express + Mongoose REST API (JWT auth, role-based access, project/proposal/contract/review/message/service/skill flows)
+- `backend/` — Express + Mongoose REST API (JWT auth, role-based access, project/proposal/contract/review/message flows)
 - `frontend/` — Angular 22 standalone single-page app (Bootstrap grid/utilities only, custom design system, Tabler icons)
 
 ## Requirements
@@ -49,9 +49,9 @@ The API base URL lives in `frontend/src/environments/environment.ts` (`apiUrl`).
 ## Feature overview
 
 - **Clients**: create/edit projects, review proposals, open contracts, complete/cancel contracts, rate freelancers.
-- **Freelancers**: browse projects by skill/budget, submit proposals, manage active contracts, message clients, publish services.
-- **Everyone**: profiles (bio, skills, avatar), password change, account deletion, project conversations, user/skill/service browsing.
-- **Admin**: user management and skill-catalog management.
+- **Freelancers**: browse projects by skill/budget, submit proposals, manage active contracts, message clients.
+- **Everyone**: profiles (bio, skills, avatar), password change, account deletion, project conversations, user browsing.
+- **Admin**: user management only — no access to private client/freelancer conversations.
 
 ## Security notes
 

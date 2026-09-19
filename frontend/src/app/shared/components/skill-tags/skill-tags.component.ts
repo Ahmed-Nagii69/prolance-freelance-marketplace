@@ -13,12 +13,6 @@ import { Component, computed, input } from '@angular/core';
 })
 export class SkillTags {
   readonly skills = input<string[]>([]);
-  readonly skillsObjects = input<{ _id: string; name: string }[]>([]);
 
-  protected readonly tags = computed(() => {
-    if (this.skills().length > 0) {
-      return this.skills();
-    }
-    return this.skillsObjects().map((skill) => skill.name);
-  });
+  protected readonly tags = computed(() => this.skills());
 }

@@ -2,8 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProjectService } from '../../../core/services/project.service';
-import { SkillService } from '../../../core/services/resource.services';
-import { ProjectListData, ProjectQuery, Skill } from '../../../core/models/models';
+import { ProjectListData, ProjectQuery } from '../../../core/models/models';
 import { formatCurrency } from '../../../core/utils/format';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge.component';
 import { SkillTags } from '../../../shared/components/skill-tags/skill-tags.component';
@@ -63,17 +62,14 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
           </div>
           <div style="min-width: 170px">
             <label class="pl-label-inline" for="f-skill">Skill</label>
-            <select
+            <input
               id="f-skill"
-              class="pl-select"
+              type="text"
+              class="pl-input"
               [(ngModel)]="filters().skill"
               name="skill"
-            >
-              <option value="">Any skill</option>
-              @for (skill of skills(); track skill._id) {
-                <option [value]="skill.name">{{ skill.name }}</option>
-              }
-            </select>
+              placeholder="e.g. typescript"
+            />
           </div>
           <div style="min-width: 150px">
             <label class="pl-label-inline" for="f-min">Min budget</label>
@@ -204,11 +200,9 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
 })
 export class ProjectsBrowse {
   private readonly projectService = inject(ProjectService);
-  private readonly skillService = inject(SkillService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  protected readonly skills = signal<Skill[]>([]);
   protected readonly loading = signal(true);
   protected readonly projects = signal<ProjectListData['projects']>([]);
   protected readonly pagination = signal<ProjectListData['pagination'] | null>(
@@ -229,11 +223,6 @@ export class ProjectsBrowse {
     if (initialSkill) {
       this.filters.update((value) => ({ ...value, skill: initialSkill }));
     }
-
-    this.skillService.getSkills().subscribe({
-      next: (data) => this.skills.set(data),
-      error: () => void 0,
-    });
 
     this.fetch();
   }

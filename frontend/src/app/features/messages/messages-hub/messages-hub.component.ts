@@ -14,7 +14,7 @@ interface Conversation {
   projectId: string;
   title: string;
   projectStatus: string;
-  other: { name: string; _id: string } | null;
+  other: { name: string; _id: string; profileImage?: string } | null;
   contractStatus?: string;
 }
 
@@ -52,7 +52,11 @@ interface Conversation {
               >
                 <div class="d-flex align-items-center gap-3 flex-grow-1">
                   <span class="pl-avatar">
-                    {{ initialsOf(conversation.other?.name ?? '?') }}
+                    @if (conversation.other?.profileImage) {
+                      <img [src]="conversation.other?.profileImage" alt="" />
+                    } @else {
+                      {{ initialsOf(conversation.other?.name ?? '?') }}
+                    }
                   </span>
                   <div>
                     <p class="mb-0 fw-semibold">{{ conversation.title }}</p>
@@ -149,9 +153,11 @@ export class MessagesHub {
     client: User,
     freelancer: User,
     me: User,
-  ): { name: string; _id: string } | null {
+  ): { name: string; _id: string; profileImage?: string } | null {
     const other = client._id === me._id ? freelancer : client;
-    return other ? { name: other.name, _id: other._id } : null;
+    return other
+      ? { name: other.name, _id: other._id, profileImage: other.profileImage }
+      : null;
   }
 
   private projectIdOf(proposal: Proposal): string {

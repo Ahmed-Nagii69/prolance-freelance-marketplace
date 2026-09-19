@@ -5,7 +5,6 @@ const Project = require("../models/Project");
 const Proposal = require("../models/Proposal");
 const Contract = require("../models/Contract");
 const Message = require("../models/Message");
-const Service = require("../models/Service");
 const sendResponse = require("../utils/response");
 
 const deleteUserData = async (userId) => {
@@ -14,7 +13,6 @@ const deleteUserData = async (userId) => {
 
   await Promise.all([
     FreelancerProfile.deleteOne({ user: userId }),
-    Service.deleteMany({ freelancer: userId }),
     Proposal.deleteMany({
       $or: [{ freelancer: userId }, { project: { $in: projectIds } }],
     }),
@@ -73,6 +71,27 @@ const updateProfile = async (req, res, next) => {
     ).select("-password");
 
     return sendResponse(res, 200, "Profile updated successfully", updatedUser);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const uploadProfilePhoto = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return sendResponse(res, 400, "No photo file provided", null, {
+        code: "VALIDATION_ERROR",
+      });
+    }
+
+    const photoUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { profileImage: photoUrl },
+      { new: true, runValidators: true },
+    ).select("-password");
+
+    return sendResponse(res, 200, "Profile photo updated successfully", user);
   } catch (error) {
     return next(error);
   }
@@ -235,6 +254,7 @@ const getUserReviews = async (req, res, next) => {
 module.exports = {
   getProfile,
   updateProfile,
+  uploadProfilePhoto,
   getFreelancerProfile,
   updateFreelancerProfile,
   deleteAccount,

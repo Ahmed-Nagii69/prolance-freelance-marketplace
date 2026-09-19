@@ -1,31 +1,29 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
   ContractService,
-  ReviewService,
 } from '../../../core/services/resource.services';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { ToastService } from '../../../core/services/toast.service';
-import {
-  Contract,
-  User,
-} from '../../../core/models/models';
+import { Contract, User } from '../../../core/models/models';
 import {
   formatCurrency,
   formatDate,
+  formatDateTime,
   initialsOf,
 } from '../../../core/utils/format';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge.component';
 import { LoadingBlock } from '../../../shared/components/loading/loading.component';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state.component';
+import { ReviewPanel } from '../review-panel/review-panel.component';
 import { extractApiMessage } from '../../../core/utils/http-error';
 
 @Component({
   selector: 'pl-contract-details',
   standalone: true,
-  imports: [RouterLink, FormsModule, StatusBadge, EmptyState, LoadingBlock,],
+  imports: [RouterLink, FormsModule, StatusBadge, EmptyState, LoadingBlock, ReviewPanel],
   template: `
     @if (loading()) {
       <div class="pl-container" style="padding-block: 4rem">
@@ -67,11 +65,137 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                 </p>
               </div>
 
+              @if (workPanel(); as work) {
+                <div class="pl-panel mb-4">
+                  <p class="pl-label mb-2">Work</p>
+
+                  @if (work.mode === 'submit') {
+                    <form (ngSubmit)="submitWork()" novalidate>
+                      <div class="pl-field">
+                        <label class="pl-label-inline" for="cw-desc">
+                          Describe the completed work
+                        </label>
+                        <textarea
+                          id="cw-desc"
+                          class="pl-textarea"
+                          required
+                          maxlength="5000"
+                          [(ngModel)]="workDescription"
+                          name="description"
+                          placeholder="Summarize what was delivered — links, deliverables, files, and how to verify it."
+                        ></textarea>
+                      </div>
+                      @if (workError(); as message) {
+                        <div
+                          class="pl-message mb-3"
+                          style="color: var(--pl-burgundy)"
+                          role="alert"
+                        >
+                          {{ message }}
+                        </div>
+                      }
+                      <button
+                        type="submit"
+                        class="pl-btn pl-btn--accent"
+                        [disabled]="workSubmitting()"
+                      >
+                        {{ workSubmitting() ? 'Submitting…' : 'Submit work' }}
+                      </button>
+                      <p class="pl-field-hint mt-2">
+                        Once submitted, the client reviews your work and either
+                        approves it (releasing the payment) or returns it for
+                        changes.
+                      </p>
+                    </form>
+                  } @else {
+                    @if (submission(); as sub) {
+                      <p class="pl-field-hint mb-2">
+                        Submitted on
+                        {{ sub.submittedAt ? formatDateTime(sub.submittedAt) : '—' }}
+                      </p>
+                      <div
+                        class="pl-panel"
+                        style="background: var(--pl-ivory-soft); padding: 1rem"
+                      >
+                        <p
+                          style="white-space: pre-line; line-height: 1.8; color: var(--pl-ink-soft); margin: 0"
+                        >
+                          {{ sub.description }}
+                        </p>
+                      </div>
+                    }
+
+                    @if (contract()!.workFeedback) {
+                      <div class="pl-message mt-3">
+                        <strong>Client feedback:</strong>
+                        {{ contract()!.workFeedback }}
+                      </div>
+                    }
+
+                    @if (work.mode === 'review') {
+                      <hr class="pl-rule" />
+                      <form (ngSubmit)="rejectWork()" novalidate>
+                        <div class="pl-field">
+                          <label class="pl-label-inline" for="cw-feedback">
+                            Feedback / reason to return
+                          </label>
+                          <textarea
+                            id="cw-feedback"
+                            class="pl-textarea"
+                            maxlength="1000"
+                            [(ngModel)]="rejectReason"
+                            name="reason"
+                            placeholder="Optional — what should the freelancer change?"
+                          ></textarea>
+                        </div>
+                        @if (workError(); as message) {
+                          <div
+                            class="pl-message mb-3"
+                            style="color: var(--pl-burgundy)"
+                            role="alert"
+                          >
+                            {{ message }}
+                          </div>
+                        }
+                        <div class="d-flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            class="pl-btn pl-btn--accent"
+                            [disabled]="workSubmitting()"
+                            (click)="approveWork()"
+                          >
+                            {{ workSubmitting() ? 'Working…' : 'Approve & release payment' }}
+                          </button>
+                          <button
+                            type="submit"
+                            class="pl-btn pl-btn--danger"
+                            [disabled]="workSubmitting()"
+                          >
+                            Return for changes
+                          </button>
+                        </div>
+                      </form>
+                    } @else if (contract()!.status === 'WORK_SUBMITTED') {
+                      <div class="pl-message mt-3">
+                        Work has been submitted and is awaiting approval from
+                        the client.
+                      </div>
+                    }
+                  }
+                </div>
+              }
+
               @if (counterparty(); as other) {
                 <div class="pl-panel mb-4">
                   <p class="pl-label mb-2">The other party</p>
                   <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <span class="pl-avatar pl-avatar--lg">{{ initialsOf(other.name) }}</span>
+                    <span class="pl-avatar pl-avatar--lg">
+                      @if (other.profileImage) {
+                        <img [src]="other.profileImage" alt="" />
+                      } @else {
+                        {{ initialsOf(other.name) }}
+                      }
+                    </span>
                     <div>
                       <p class="mb-0 fw-semibold">{{ other.name }}</p>
                       <p class="pl-faint mb-0" style="font-size: 0.9rem">{{ other.email }}</p>
@@ -87,19 +211,12 @@ import { extractApiMessage } from '../../../core/utils/http-error';
 
               @if (actions()) {
                 <div class="d-flex flex-wrap gap-2 mb-4">
-                  <a
-                    [routerLink]="['/messages/project', contract()!.project._id]"
-                    class="pl-btn pl-btn--purple"
-                    >Open conversation</a
-                  >
-                  @if (actions()!.complete) {
-                    <button
-                      type="button"
-                      class="pl-btn pl-btn--accent"
-                      (click)="complete()"
+                  @if (actions()!.messages) {
+                    <a
+                      [routerLink]="['/messages/project', contract()!.project._id]"
+                      class="pl-btn pl-btn--purple"
+                      >Open conversation</a
                     >
-                      Mark contract completed
-                    </button>
                   }
                   @if (actions()!.cancel) {
                     <button
@@ -113,57 +230,13 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                 </div>
               }
 
-              @if (canReview()) {
+              @if (contract()!.status === 'COMPLETED') {
                 <div class="pl-panel">
                   <p class="pl-label mb-2">Leave a review</p>
-                  @if (alreadyReviewed()) {
-                    <div class="pl-message">
-                      You've already left a review for this contract. Thank you!
-                    </div>
-                  } @else {
-                    <form (ngSubmit)="submitReview()" novalidate>
-                      <div class="pl-field">
-                        <span class="pl-label-inline">Rating</span>
-                        <div class="d-flex gap-2">
-                          @for (value of [1, 2, 3, 4, 5]; track value) {
-                            <button
-                              type="button"
-                              class="pl-rate"
-                              [class.is-selected]="reviewRating() >= value"
-                              (click)="reviewRating.set(value)"
-                              [attr.aria-label]="'Rate ' + value + ' out of 5'"
-                            >
-                              {{ reviewRating() >= value ? '★' : '☆' }}
-                            </button>
-                          }
-                        </div>
-                      </div>
-                      <div class="pl-field">
-                        <label class="pl-label-inline" for="cv-comment">Comment</label>
-                        <textarea
-                          id="cv-comment"
-                          class="pl-textarea"
-                          required
-                          maxlength="2000"
-                          [(ngModel)]="reviewComment"
-                          name="comment"
-                          placeholder="How was the collaboration?"
-                        ></textarea>
-                      </div>
-                      @if (reviewError(); as message) {
-                        <div class="pl-message mb-3" style="color: var(--pl-burgundy)" role="alert">
-                          {{ message }}
-                        </div>
-                      }
-                      <button
-                        type="submit"
-                        class="pl-btn pl-btn--accent"
-                        [disabled]="reviewSubmitting()"
-                      >
-                        {{ reviewSubmitting() ? 'Submitting…' : 'Submit review' }}
-                      </button>
-                    </form>
-                  }
+                  <pl-review-panel
+                    [contractId]="contract()!._id"
+                    [contractStatus]="contract()!.status"
+                  />
                 </div>
               }
             </div>
@@ -175,6 +248,22 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                   <div class="pl-stat">
                     <span class="pl-stat__value">{{ formatCurrency(contract()!.agreedPrice) }}</span>
                     <span class="pl-stat__label">Agreed price</span>
+                  </div>
+                  <div class="pl-stat" style="border-left-color: var(--pl-burgundy)">
+                    @if (contract()!.paymentReleased) {
+                      <span class="pl-stat__value" style="font-size: 1.5rem">
+                        {{ formatCurrency(contract()!.agreedPrice) }}
+                      </span>
+                      <span class="pl-stat__label">Payment released</span>
+                    } @else if (contract()!.status === 'ACTIVE' || contract()!.status === 'WORK_SUBMITTED') {
+                      <span class="pl-stat__value" style="font-size: 1.5rem">
+                        {{ formatCurrency(contract()!.heldAmount ?? 0) }}
+                      </span>
+                      <span class="pl-stat__label">Held in escrow</span>
+                    } @else {
+                      <span class="pl-stat__value" style="font-size: 1.5rem">—</span>
+                      <span class="pl-stat__label">Payment</span>
+                    }
                   </div>
                   <div class="pl-stat" style="border-left-color: var(--pl-purple)">
                     <span class="pl-stat__value" style="font-size: 1.5rem">
@@ -188,7 +277,7 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                     </span>
                     <span class="pl-stat__label">Started</span>
                   </div>
-                  <div class="pl-stat" style="border-left-color: var(--pl-burgundy)">
+                  <div class="pl-stat">
                     <span class="pl-stat__value" style="font-size: 1.5rem">
                       {{ contract()!.proposal.deliveryTime }} days
                     </span>
@@ -202,29 +291,11 @@ import { extractApiMessage } from '../../../core/utils/http-error';
       </section>
     }
   `,
-  styles: [
-    `
-      .pl-rate {
-        background: none;
-        border: 0;
-        font-size: 1.7rem;
-        line-height: 1;
-        cursor: pointer;
-        color: var(--pl-stone-dark);
-        padding: 0;
-      }
-
-      .pl-rate.is-selected {
-        color: var(--pl-brass);
-      }
-    `,
-  ],
 })
 export class ContractDetails {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly contractService = inject(ContractService);
-  private readonly reviewService = inject(ReviewService);
   private readonly auth = inject(AuthService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
@@ -234,14 +305,13 @@ export class ContractDetails {
   protected readonly user = this.auth.user;
   protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;
+  protected readonly formatDateTime = formatDateTime;
   protected readonly initialsOf = initialsOf;
 
-  protected readonly canReview = signal(false);
-  protected readonly alreadyReviewed = signal(false);
-  protected readonly reviewRating = signal(0);
-  protected readonly reviewComment = signal('');
-  protected readonly reviewSubmitting = signal(false);
-  protected readonly reviewError = signal('');
+  protected readonly workDescription = signal('');
+  protected readonly rejectReason = signal('');
+  protected readonly workSubmitting = signal(false);
+  protected readonly workError = signal('');
 
   constructor() {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -253,35 +323,11 @@ export class ContractDetails {
       next: (contract) => {
         this.contract.set(contract);
         this.loading.set(false);
-        this.evaluateReviewAbility(contract);
       },
       error: () => {
         this.loading.set(false);
         void this.router.navigate(['/contracts']);
       },
-    });
-  }
-
-  private evaluateReviewAbility(contract: Contract): void {
-    const me = this.auth.user();
-    if (!me || contract.status !== 'COMPLETED') return;
-
-    const other =
-      contract.client._id === me._id ? contract.freelancer : contract.client;
-
-    this.canReview.set(true);
-
-    this.reviewService.getUserReviews(other._id, 1, 100).subscribe({
-      next: (data) => {
-        const mine = data.reviews.find(
-          (review) =>
-            typeof review.reviewer === 'object' &&
-            review.reviewer._id === me._id &&
-            review.contract === contract._id,
-        );
-        this.alreadyReviewed.set(Boolean(mine));
-      },
-      error: () => void 0,
     });
   }
 
@@ -294,37 +340,120 @@ export class ContractDetails {
       : contract.client;
   }
 
-  actions(): { complete: boolean; cancel: boolean; messages: boolean } | null {
+  workPanel(): { mode: 'submit' | 'review' | 'info' } | null {
+    const contract = this.contract();
+    const me = this.user();
+    if (!contract || !me || me.role === 'ADMIN') return null;
+    const isClient = contract.client._id === me._id;
+    const isFreelancer = contract.freelancer._id === me._id;
+    if (!isClient && !isFreelancer) return null;
+
+    if (contract.status === 'ACTIVE' && isFreelancer) {
+      return { mode: 'submit' };
+    }
+    if (contract.status === 'WORK_SUBMITTED' && isClient) {
+      return { mode: 'review' };
+    }
+    if (
+      contract.status === 'WORK_SUBMITTED' ||
+      (contract.status === 'COMPLETED' && contract.workSubmission?.description)
+    ) {
+      return { mode: 'info' };
+    }
+    return null;
+  }
+
+  submission(): Contract['workSubmission'] | null {
+    const sub = this.contract()?.workSubmission;
+    return sub?.description ? sub : null;
+  }
+
+  actions(): { cancel: boolean; messages: boolean } | null {
     const contract = this.contract();
     if (!contract) return null;
+    const me = this.auth.user();
+    const participant = Boolean(me && me.role !== 'ADMIN');
     return {
-      complete: contract.status === 'ACTIVE',
-      cancel: contract.status === 'ACTIVE',
-      messages: contract.status === 'ACTIVE',
+      cancel: participant && contract.status === 'ACTIVE',
+      messages: participant && contract.status === 'ACTIVE',
     };
   }
 
-  complete(): void {
+  submitWork(): void {
+    const contract = this.contract();
+    if (!contract || !this.workDescription().trim()) {
+      this.workError.set('Please describe the completed work.');
+      return;
+    }
+    this.workSubmitting.set(true);
+    this.workError.set('');
+    this.contractService
+      .submitWork(contract._id, this.workDescription().trim())
+      .subscribe({
+        next: () => {
+          this.toast.success('Work submitted for approval.');
+          this.workSubmitting.set(false);
+          this.workDescription.set('');
+          this.fetch(contract._id);
+        },
+        error: (err) => {
+          this.workError.set(
+            extractApiMessage(err, 'Unable to submit your work.'),
+          );
+          this.workSubmitting.set(false);
+        },
+      });
+  }
+
+  approveWork(): void {
     const contract = this.contract();
     if (!contract) return;
     this.confirm
       .confirm({
-        title: 'Complete this contract?',
-        body: 'The project will be marked completed and both parties can leave verified reviews.',
-        confirmLabel: 'Complete contract',
+        title: 'Approve the work and release payment?',
+        body: 'Approving completes the contract and releases the held amount to the freelancer. This cannot be undone.',
+        confirmLabel: 'Approve & release',
       })
       .subscribe((accepted) => {
         if (!accepted) return;
-        this.contractService.completeContract(contract._id).subscribe({
+        this.workSubmitting.set(true);
+        this.workError.set('');
+        this.contractService.approveWork(contract._id).subscribe({
           next: () => {
-            this.toast.success('Contract marked as completed.');
+            this.toast.success('Work approved and payment released.');
+            this.workSubmitting.set(false);
             this.fetch(contract._id);
           },
-          error: (err) =>
-            this.toast.error(
-              extractApiMessage(err, 'Unable to complete the contract.'),
-            ),
+          error: (err) => {
+            this.workError.set(
+              extractApiMessage(err, 'Unable to approve the work.'),
+            );
+            this.workSubmitting.set(false);
+          },
         });
+      });
+  }
+
+  rejectWork(): void {
+    const contract = this.contract();
+    if (!contract) return;
+    this.workSubmitting.set(true);
+    this.workError.set('');
+    this.contractService
+      .rejectWork(contract._id, this.rejectReason().trim())
+      .subscribe({
+        next: () => {
+          this.toast.success('Work returned to the freelancer for changes.');
+          this.workSubmitting.set(false);
+          this.rejectReason.set('');
+          this.fetch(contract._id);
+        },
+        error: (err) => {
+          this.workError.set(
+            extractApiMessage(err, 'Unable to return the work.'),
+          );
+          this.workSubmitting.set(false);
+        },
       });
   }
 
@@ -334,7 +463,7 @@ export class ContractDetails {
     this.confirm
       .confirm({
         title: 'Cancel this contract?',
-        body: 'Both the contract and the project will be cancelled. This cannot be undone.',
+        body: 'Both the contract and the project will be cancelled and any held funds are refunded.',
         confirmLabel: 'Cancel contract',
         danger: true,
       })
@@ -350,35 +479,6 @@ export class ContractDetails {
               extractApiMessage(err, 'Unable to cancel the contract.'),
             ),
         });
-      });
-  }
-
-  submitReview(): void {
-    const contract = this.contract();
-    if (!contract || this.reviewRating() < 1 || !this.reviewComment().trim()) {
-      this.reviewError.set('A rating and a comment are required.');
-      return;
-    }
-    this.reviewSubmitting.set(true);
-    this.reviewError.set('');
-    this.reviewService
-      .createReview({
-        contract: contract._id,
-        rating: this.reviewRating(),
-        comment: this.reviewComment(),
-      })
-      .subscribe({
-        next: () => {
-          this.toast.success('Review submitted. Thank you.');
-          this.alreadyReviewed.set(true);
-          this.reviewSubmitting.set(false);
-        },
-        error: (err) => {
-          this.reviewError.set(
-            extractApiMessage(err, 'Unable to submit the review.'),
-          );
-          this.reviewSubmitting.set(false);
-        },
       });
   }
 }

@@ -38,7 +38,7 @@ export class AuthService {
 
   private readStorage(key: string): string | null {
     try {
-      return window.localStorage.getItem(key);
+      return window.sessionStorage.getItem(key);
     } catch {
       return null;
     }
@@ -111,8 +111,8 @@ export class AuthService {
     this.tokenSignal.set(data.token);
     this.userSignal.set(data.user);
     try {
-      window.localStorage.setItem(TOKEN_KEY, data.token);
-      window.localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      window.sessionStorage.setItem(TOKEN_KEY, data.token);
+      window.sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
     } catch {
       void 0;
     }
@@ -121,7 +121,7 @@ export class AuthService {
   private persistUser(user: User): void {
     this.userSignal.set(user);
     try {
-      window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+      window.sessionStorage.setItem(USER_KEY, JSON.stringify(user));
     } catch {
       void 0;
     }
@@ -130,7 +130,7 @@ export class AuthService {
   setToken(token: string): void {
     this.tokenSignal.set(token);
     try {
-      window.localStorage.setItem(TOKEN_KEY, token);
+      window.sessionStorage.setItem(TOKEN_KEY, token);
     } catch {
       void 0;
     }
@@ -158,8 +158,8 @@ export class AuthService {
     this.tokenSignal.set(null);
     this.userSignal.set(null);
     try {
-      window.localStorage.removeItem(TOKEN_KEY);
-      window.localStorage.removeItem(USER_KEY);
+      window.sessionStorage.removeItem(TOKEN_KEY);
+      window.sessionStorage.removeItem(USER_KEY);
     } catch {
       void 0;
     }

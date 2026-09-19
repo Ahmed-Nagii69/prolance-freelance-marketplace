@@ -3,16 +3,19 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
+import { ReviewService } from '../../../core/services/resource.services';
 import { ToastService } from '../../../core/services/toast.service';
 import { SkillTags } from '../../../shared/components/skill-tags/skill-tags.component';
 import { LoadingBlock } from '../../../shared/components/loading/loading.component';
-import { initialsOf } from '../../../core/utils/format';
+import { RatingStars } from '../../../shared/components/stars/stars.component';
+import { formatDate, initialsOf } from '../../../core/utils/format';
 import { extractApiMessage } from '../../../core/utils/http-error';
+import { Review } from '../../../core/models/models';
 
 @Component({
   selector: 'pl-freelancer-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, SkillTags, LoadingBlock,],
+  imports: [CommonModule, FormsModule, SkillTags, LoadingBlock, RatingStars],
   template: `
     <div class="pl-page-title">
       <div class="pl-container">
@@ -110,7 +113,13 @@ import { extractApiMessage } from '../../../core/utils/http-error';
             <div class="pl-panel" style="top: 90px">
               <p class="pl-label">Public preview</p>
               <div class="d-flex align-items-center gap-3 mb-3">
-                <span class="pl-avatar pl-avatar--lg">{{ initialsOf(name()) }}</span>
+                <span class="pl-avatar pl-avatar--lg">
+                  @if (profileImage()) {
+                    <img [src]="profileImage()" alt="" />
+                  } @else {
+                    {{ initialsOf(name()) }}
+                  }
+                </span>
                 <div>
                   <p class="mb-0 fw-semibold">{{ name() }}</p>
                   <p class="pl-faint mb-0" style="font-size: 0.9rem">
@@ -133,6 +142,41 @@ import { extractApiMessage } from '../../../core/utils/http-error';
             </div>
           </div>
         </div>
+
+        <div class="mt-4">
+          <div class="pl-panel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <p class="pl-label mb-0">Reviews from clients</p>
+            </div>
+            @if (reviewsLoaded() && reviews().length === 0) {
+              <p class="pl-muted mb-0">
+                No reviews yet. Completed contracts unlock verified reviews.
+              </p>
+            } @else if (reviews().length > 0) {
+              <div class="d-flex flex-column gap-3">
+                @for (review of reviews(); track review._id) {
+                  <div class="pl-review">
+                    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                      <pl-stars [rating]="review.rating" />
+                      <span class="pl-faint" style="font-size: 0.8rem">
+                        {{ formatDate(review.createdAt) }}
+                      </span>
+                    </div>
+                    <p
+                      class="mb-1 mt-2"
+                      style="color: var(--pl-ink-soft); line-height: 1.6"
+                    >
+                      {{ review.comment }}
+                    </p>
+                    <p class="pl-faint mb-0" style="font-size: 0.85rem">
+                      — {{ reviewerName(review) }}
+                    </p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
       </div>
     </section>
   `,
@@ -140,6 +184,7 @@ import { extractApiMessage } from '../../../core/utils/http-error';
 export class FreelancerProfilePage {
   private readonly userService = inject(UserService);
   private readonly auth = inject(AuthService);
+  private readonly reviewService = inject(ReviewService);
   private readonly toast = inject(ToastService);
 
   protected readonly loading = signal(true);
@@ -152,14 +197,21 @@ export class FreelancerProfilePage {
   protected readonly skillsCsv = signal('');
 
   protected readonly name = signal('Freelancer');
+  protected readonly profileImage = signal('');
   protected readonly initialsOf = initialsOf;
 
   protected readonly tags = signal<string[]>([]);
+
+  protected readonly reviews = signal<Review[]>([]);
+  protected readonly reviewsLoaded = signal(false);
+  protected readonly formatDate = formatDate;
 
   constructor() {
     const current = this.auth.user();
     if (current) {
       this.name.set(current.name);
+      this.profileImage.set(current.profileImage);
+      this.loadReviews(current._id);
     }
     this.userService.getFreelancerProfile().subscribe({
       next: (profile) => {
@@ -172,6 +224,25 @@ export class FreelancerProfilePage {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  private loadReviews(userId: string): void {
+    this.reviewService.getUserReviews(userId, 1, 50).subscribe({
+      next: (data) => {
+        this.reviews.set(data.reviews);
+        this.reviewsLoaded.set(true);
+      },
+      error: () => {
+        this.reviewsLoaded.set(true);
+      },
+    });
+  }
+
+  reviewerName(review: Review): string {
+    if (typeof review.reviewer === 'object' && review.reviewer !== null) {
+      return review.reviewer.name;
+    }
+    return 'Client';
   }
 
   save(): void {

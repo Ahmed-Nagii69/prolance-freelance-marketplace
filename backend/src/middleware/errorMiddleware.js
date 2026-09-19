@@ -1,3 +1,5 @@
+const multer = require("multer");
+
 const errorMiddleware = (err, req, res, next) => {
   console.error(err.message);
 
@@ -17,6 +19,14 @@ const errorMiddleware = (err, req, res, next) => {
     statusCode = 409;
     message = "A record with those values already exists";
     code = "DUPLICATE_RESOURCE";
+  } else if (err instanceof multer.MulterError) {
+    statusCode = 400;
+    message = err.code === "LIMIT_FILE_SIZE" ? "Image is too large (max 3 MB)" : "Image upload failed";
+    code = "VALIDATION_ERROR";
+  } else if (err.message === "Only image files are allowed") {
+    statusCode = 400;
+    message = err.message;
+    code = "VALIDATION_ERROR";
   }
 
   return res.status(statusCode).json({

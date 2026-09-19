@@ -4,9 +4,20 @@ const User = require("../models/User");
 const Contract = require("../models/Contract");
 const Proposal = require("../models/Proposal");
 const sendResponse = require("../utils/response");
+const { createNotification } = require("../utils/notify");
 
 const sendMessage = async (req, res, next) => {
   try {
+    if (req.user.role === "ADMIN") {
+      return sendResponse(
+        res,
+        403,
+        "Administrators cannot participate in conversations",
+        null,
+        { code: "FORBIDDEN" },
+      );
+    }
+
     const { receiver, project, content } = req.body;
 
     if (
@@ -81,6 +92,14 @@ const sendMessage = async (req, res, next) => {
       isRead: false,
     });
 
+    await createNotification({
+      user: receiver,
+      actor: req.user._id,
+      type: "MESSAGE",
+      message: `${req.user.name} sent you a message about "${projectExists.title}"`,
+      link: `/messages/project/${project}`,
+    });
+
     return sendResponse(res, 201, "Message sent successfully", message);
   } catch (error) {
     return next(error);
@@ -89,6 +108,16 @@ const sendMessage = async (req, res, next) => {
 
 const getProjectMessages = async (req, res, next) => {
   try {
+    if (req.user.role === "ADMIN") {
+      return sendResponse(
+        res,
+        403,
+        "Administrators cannot view private conversations",
+        null,
+        { code: "FORBIDDEN" },
+      );
+    }
+
     const project = await Project.findById(req.params.projectId);
     if (!project) {
       return sendResponse(res, 404, "Project not found", null, {
@@ -160,6 +189,16 @@ const getProjectMessages = async (req, res, next) => {
 
 const markMessageAsRead = async (req, res, next) => {
   try {
+    if (req.user.role === "ADMIN") {
+      return sendResponse(
+        res,
+        403,
+        "Administrators cannot view private conversations",
+        null,
+        { code: "FORBIDDEN" },
+      );
+    }
+
     const message = await Message.findById(req.params.id);
 
     if (!message) {
@@ -187,8 +226,26 @@ const markMessageAsRead = async (req, res, next) => {
   }
 };
 
+const getUnreadCount = async (req, res, next) => {
+  try {
+    if (req.user.role === "ADMIN") {
+      return sendResponse(res, 403, "Forbidden", null, { code: "FORBIDDEN" });
+    }
+    const unreadCount = await Message.countDocuments({
+      receiver: req.user._id,
+      isRead: false,
+    });
+    return sendResponse(res, 200, "Unread message count fetched successfully", {
+      unreadCount,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   sendMessage,
   getProjectMessages,
   markMessageAsRead,
+  getUnreadCount,
 };

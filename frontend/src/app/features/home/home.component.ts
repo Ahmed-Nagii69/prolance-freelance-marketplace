@@ -1,15 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ProjectService } from '../../core/services/project.service';
-import { ServiceService } from '../../core/services/resource.services';
 import { AuthService } from '../../core/services/auth.service';
-import { SkillService } from '../../core/services/resource.services';
-import { Project, Service, Skill, User } from '../../core/models/models';
+import { Project, User } from '../../core/models/models';
 import { formatCurrency } from '../../core/utils/format';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge.component';
 import { SkillTags } from '../../shared/components/skill-tags/skill-tags.component';
-import { LoadingBlock } from '../../shared/components/loading/loading.component';
-import { EmptyState } from '../../shared/components/empty-state/empty-state.component';
 
 interface NextStep {
   step: string;
@@ -21,7 +17,7 @@ interface NextStep {
 @Component({
   selector: 'pl-home',
   standalone: true,
-  imports: [RouterLink, StatusBadge, SkillTags, LoadingBlock, EmptyState],
+  imports: [RouterLink, StatusBadge, SkillTags],
   template: `
     <section class="pl-hero">
       <div class="pl-container">
@@ -185,7 +181,7 @@ interface NextStep {
                   <p class="pl-h2 m-0" style="color: var(--pl-brass)">03</p>
                   <p class="pl-feature__title text-white">Contract, then review</p>
                   <p class="pl-feature__body" style="color: rgba(245,241,232,.7)">
-                    Accept a proposal, message within the project, and leave a
+                    Accept a proposal, start the contract, and leave a
                     verified review when it's done.
                   </p>
                 </div>
@@ -196,79 +192,7 @@ interface NextStep {
       </div>
     </section>
 
-    <section class="pl-section pl-section--tint-light">
-      <div class="pl-container">
-        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
-          <div>
-            <p class="pl-kicker">The catalogue</p>
-            <h2 class="pl-h2">Skills across the platform</h2>
-          </div>
-          <a routerLink="/skills" class="pl-faded-link">Full skill list →</a>
-        </div>
-        @if (skills().length === 0) {
-          <pl-loading />
-        } @else {
-          <div class="d-flex flex-wrap gap-2">
-            @for (skill of skills().slice(0, 12); track skill._id) {
-              <span class="pl-tag pl-tag--active">
-                <a
-                  [routerLink]="['/projects']"
-                  [queryParams]="{ skill: skill.name }"
-                  style="color: inherit"
-                  >{{ skill.name }}</a
-                >
-              </span>
-            }
-          </div>
-        }
-      </div>
-    </section>
-
     <section class="pl-section">
-      <div class="pl-container">
-        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
-          <div>
-            <p class="pl-kicker">Services</p>
-            <h2 class="pl-h2">Pre-packed offerings</h2>
-          </div>
-          <a routerLink="/services" class="pl-faded-link">All services →</a>
-        </div>
-        @if (servicesLoading()) {
-          <pl-loading />
-        } @else if (services().length === 0) {
-          <pl-empty-state
-            title="No services yet"
-            body="Freelancers can publish fixed-price offerings that clients can discover directly."
-          />
-        } @else {
-          <div class="row g-4">
-            @for (service of services(); track service._id) {
-              <div class="col-12 col-md-6 col-lg-4">
-                <div class="pl-card">
-                  <div class="d-flex justify-content-between align-items-start gap-3">
-                    <span class="pl-card__title">{{ service.title }}</span>
-                    <span class="pl-h3 m-0" style="color: var(--pl-petrol)">
-                      {{ formatCurrency(service.price) }}
-                    </span>
-                  </div>
-                  <p class="pl-card__meta">
-                    by {{ service.freelancer?.name ?? 'A freelancer' }}
-                  </p>
-                  <p class="pl-card__body" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">
-                    {{ service.description }}
-                  </p>
-                  <div class="mt-auto">
-                    <pl-skill-tags [skillsObjects]="service.skills ?? []" />
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </div>
-    </section>
-
-    <section class="pl-section" style="padding-top: 0">
       <div class="pl-container">
         <div
           class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-4"
@@ -300,8 +224,6 @@ interface NextStep {
 })
 export class Home {
   private readonly projectService = inject(ProjectService);
-  private readonly serviceService = inject(ServiceService);
-  private readonly skillService = inject(SkillService);
   private readonly auth = inject(AuthService);
 
   protected readonly user = computed<User | null>(() => this.auth.user());
@@ -331,9 +253,9 @@ export class Home {
           },
           {
             step: '04',
-            title: 'Message & finish',
-            detail: 'Chat during the work, then complete and review.',
-            link: ['/messages'],
+            title: 'Complete & review',
+            detail: 'Finish the contract and exchange verified reviews.',
+            link: ['/contracts'],
           },
         ];
       case 'FREELANCER':
@@ -368,7 +290,7 @@ export class Home {
           {
             step: '01',
             title: 'Open the admin workspace',
-            detail: 'Manage users and the skill catalog.',
+            detail: 'Manage the marketplace and its users.',
             link: ['/admin'],
           },
         ];
@@ -379,9 +301,6 @@ export class Home {
 
   protected readonly projectsLoading = signal(true);
   protected readonly featured = signal<Project[]>([]);
-  protected readonly servicesLoading = signal(true);
-  protected readonly services = signal<Service[]>([]);
-  protected readonly skills = signal<Skill[]>([]);
 
   constructor() {
     this.projectService
@@ -391,16 +310,6 @@ export class Home {
         error: () => void 0,
       })
       .add(() => this.projectsLoading.set(false));
-
-    this.serviceService.getServices().subscribe({
-      next: (data) => this.services.set(data.slice(0, 3)),
-      error: () => void 0,
-    }).add(() => this.servicesLoading.set(false));
-
-    this.skillService.getSkills().subscribe({
-      next: (data) => this.skills.set(data),
-      error: () => void 0,
-    });
   }
 
   clientName(project: Project): string {

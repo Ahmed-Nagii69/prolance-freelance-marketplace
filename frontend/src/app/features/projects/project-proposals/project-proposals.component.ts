@@ -44,7 +44,11 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                 <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
                   <div class="d-flex align-items-start gap-3">
                     <span class="pl-avatar pl-avatar--lg">
-                      {{ initialsOf(freelancerName(proposal)) }}
+                      @if (freelancerPhoto(proposal)) {
+                        <img [src]="freelancerPhoto(proposal)" alt="" />
+                      } @else {
+                        {{ initialsOf(freelancerName(proposal)) }}
+                      }
                     </span>
                     <div>
                       <p class="mb-0 fw-semibold">{{ freelancerName(proposal) }}</p>
@@ -128,6 +132,14 @@ export class ProjectProposals {
       return (freelancer as User).name;
     }
     return 'Freelancer';
+  }
+
+  freelancerPhoto(proposal: Proposal): string {
+    const freelancer = proposal.freelancer;
+    if (typeof freelancer === 'object' && freelancer !== null) {
+      return (freelancer as User).profileImage || '';
+    }
+    return '';
   }
 
   accept(proposal: Proposal): void {

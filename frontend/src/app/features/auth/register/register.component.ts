@@ -89,18 +89,6 @@ import { Role } from '../../../core/models/models';
         </div>
 
         <div class="pl-field">
-          <label class="pl-label-inline" for="reg-bio">Short bio (optional)</label>
-          <textarea
-            id="reg-bio"
-            class="pl-textarea"
-            style="min-height: 90px"
-            [(ngModel)]="form.bio"
-            name="bio"
-            placeholder="A couple of sentences about you and your work."
-          ></textarea>
-        </div>
-
-        <div class="pl-field">
           <label class="pl-label-inline" for="reg-skills">
             Skills (optional, comma separated)
           </label>
@@ -150,14 +138,13 @@ export class Register {
     email: '',
     password: '',
     role: 'CLIENT' as Role,
-    bio: '',
   };
   protected skillsCsv = '';
   protected readonly submitting = signal(false);
   protected readonly error = signal('');
 
   submit(): void {
-    const { name, email, password, role, bio } = this.form;
+    const { name, email, password, role } = this.form;
 
     if (!name.trim() || !email.trim() || !password) {
       this.error.set('Name, email and password are required.');
@@ -182,7 +169,6 @@ export class Register {
         email,
         password,
         role: role as 'CLIENT' | 'FREELANCER',
-        bio,
         skills,
       })
       .subscribe({

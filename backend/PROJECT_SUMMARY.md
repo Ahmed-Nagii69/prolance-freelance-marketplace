@@ -13,28 +13,25 @@ Hiring freelancers and managing contract-based digital work often involves fragm
 The core concept of ProLance revolves around two complementary marketplace dynamics:
 
 1. **Client-Led Project Workflow:** Clients post customized project briefs with budgets and deadlines. Freelancers discover these projects and submit competitive proposals with delivery timelines. When a client accepts a proposal, an active contract is created, locking in the terms and transitioning the project into execution.
-2. **Freelancer-Led Services Catalog:** Freelancers publish pre-packaged service offerings (gigs) at fixed prices tagged with standardized platform skills, allowing clients to browse and discover freelancer offerings directly.
-3. **Collaboration & Reputation:** Active contracts enable project-scoped communication and culminate in completion and verified reciprocal ratings and reviews. Platform administrators curate the master skills taxonomy.
+2. **Collaboration & Reputation:** Active contracts and proposal relationships enable project-scoped messaging between the client and freelancer, and completion culminates in verified reciprocal ratings and reviews.
 
 ### 3. Main Users and Roles
 
 The platform enforces role-based access control with three distinct user roles:
 
-- **`CLIENT`**: Publishes and manages projects, browses freelancer services, reviews incoming proposals, accepts proposals (which automatically creates contracts), exchanges project messages, completes/cancels contracts, and reviews freelancers upon completion.
-- **`FREELANCER`**: Maintains an extended profile with hourly rates and bio, publishes pre-packaged services linked to catalog skills, searches open projects, submits proposals, collaborates on active contracts, sends project messages, and reviews clients upon completion.
-- **`ADMIN`**: Oversees platform integrity, manages all user accounts, and creates/manages the platform's standardized Skills catalog.
+- **`CLIENT`**: Publishes and manages projects, reviews incoming proposals, accepts proposals (which automatically creates contracts), exchanges project messages, completes/cancels contracts, and reviews freelancers upon completion.
+- **`FREELANCER`**: Maintains an extended profile with hourly rates and bio, searches open projects, submits proposals, collaborates on active contracts, sends project messages, and reviews clients upon completion.
+- **`ADMIN`**: Oversees platform integrity and manages all user accounts. Administrators have no access to private client/freelancer conversations.
 
 ### 4. Main Features
 
 - **User Authentication & Profiles:** Registration, credential verification with bcrypt password hashing, 7-day signed JWT tokens, authenticated password changes, email-based one-time password resets, and extended profiles for freelancers.
-- **Master Skills Catalog:** Admin-curated, standardized skill records referenced across services and profiles.
-- **Freelancer Services Offerings:** Publishable, browsable service offerings linked directly to valid platform skills.
 - **Project Marketplace:** Full CRUD for project postings with multi-criteria filtering, text search across titles and descriptions, budget/deadline ranges, and bounded pagination.
 - **Proposal Lifecycle:** Freelancers apply to open projects; clients evaluate proposals and accept or reject them.
 - **Contract Management:** Automatic contract creation upon proposal acceptance, tracking start date, agreed delivery deadline, agreed price, and statuses (`ACTIVE`, `COMPLETED`, `CANCELLED`).
-- **Project Messaging:** Real-time project communication restricted strictly to verified project participants, with read tracking.
+- **Project Messaging:** Project-scoped communication restricted strictly to verified participants (project client and agreeing freelancer), with read tracking. Admins cannot access conversations.
 - **Reputation & Review System:** Verified, one-time mutual reviews and 1–5 star ratings permitted only after successful contract completion.
-- **Referential Integrity & Cascading Cleanups:** Cascading deletions remove associated projects, proposals, contracts, services, messages, and reviews when accounts or projects are deleted.
+- **Referential Integrity & Cascading Cleanups:** Cascading deletions remove associated projects, proposals, contracts, messages, and reviews when accounts or projects are deleted.
 
 ---
 
@@ -53,7 +50,7 @@ Here is how the ProLance system operates from start to finish, explained step-by
    ▼                                                             ▼
 [CLIENT FLOW]                                            [FREELANCER FLOW]
 1. Post Project (Budget, Deadline, Skills)               1. Set Freelancer Profile (Title, Rate, Bio)
-2. View Proposals submitted to project                   2. Publish Services linked to Platform Skills
+2. View Proposals submitted to project                   2. Browse Open Projects & Submit Proposal
 3. Accept winning Proposal                               3. Browse Open Projects & Submit Proposal
          │                                                       │
          └───────────────────────┬───────────────────────────────┘
@@ -121,10 +118,9 @@ The OTP is generated with a cryptographic random source, only its SHA-256 hash i
 
 Endpoints with role restrictions use `roleMiddleware("CLIENT")`, `roleMiddleware("FREELANCER")`, or `roleMiddleware("ADMIN")`. If `req.user.role` does not match the permitted roles, the request is immediately rejected with HTTP `403 Forbidden`.
 
-### 5. Skills and Services Catalog
+### 5. Skills
 
-- An **Admin** creates standardized skill tags (e.g., "Node.js", "MongoDB", "UI Design") via `POST /api/skills`. Any user or guest can browse all skills (`GET /api/skills`).
-- A **Freelancer** publishes service packages via `POST /api/services` specifying title, description, price, and referencing valid `Skill` IDs. Clients and guests can browse available services via `GET /api/services` and view individual service details via `GET /api/services/:id`.
+Skills are stored as **freeform strings** on `User`, `FreelancerProfile`, and `Project` records (up to 30 each). There is no centralized skill catalog and no service-offering endpoints.
 
 ### 6. Project Creation & Discovery
 
@@ -146,7 +142,7 @@ The client reviews proposals submitted to their project via `GET /api/projects/:
 
 ### 9. Project Collaboration & Messaging
 
-While a project is active (or has active proposals/contracts), participants exchange direct messages using `POST /api/messages`. The system checks project ownership and participation rules to ensure only verified participants can communicate. Receivers mark messages as read via `PATCH /api/messages/:id/read`.
+While a project is active (or has active proposals/contracts), the project client and agreeing freelancer exchange direct messages using `POST /api/messages`. The system checks project ownership and participation rules to ensure only verified participants can communicate; `ADMIN` accounts are explicitly rejected with HTTP `403`. Receivers mark messages as read via `PATCH /api/messages/:id/read`.
 
 ### 10. Contract Completion & Reviews
 
@@ -196,27 +192,7 @@ Extends the `User` model with dedicated professional details for freelancers.
 - `skills` (Array of Strings, max 30 items, default `[]`)
 - Timestamps: `createdAt`, `updatedAt`
 
-### 3. Skill (`src/models/Skill.js`)
-
-Standardized platform skill catalog managed by administrators.
-
-- `name` (String, required, unique, lowercase, trimmed, maxlength 80)
-- `description` (String, maxlength 500, default `""`)
-- Timestamps: `createdAt`, `updatedAt`
-
-### 4. Service (`src/models/Service.js`)
-
-Pre-packaged service offerings published by freelancers.
-
-- `title` (String, required, minlength 3, maxlength 100, trimmed)
-- `description` (String, required, maxlength 5000, trimmed)
-- `price` (Number, required, min 5)
-- `freelancer` (ObjectId ref `User`, required)
-- `skills` (Array of ObjectIds ref `Skill`)
-- Indexes: `{ freelancer: 1, createdAt: -1 }`, `{ skills: 1, createdAt: -1 }`
-- Timestamps: `createdAt`, `updatedAt`
-
-### 5. Project (`src/models/Project.js`)
+### 3. Project (`src/models/Project.js`)
 
 Work published by clients seeking freelancer bids.
 
@@ -230,7 +206,7 @@ Work published by clients seeking freelancer bids.
 - Indexes: `{ client: 1, createdAt: -1 }`, `{ status: 1, createdAt: -1 }`
 - Timestamps: `createdAt`, `updatedAt`
 
-### 6. Proposal (`src/models/Proposal.js`)
+### 4. Proposal (`src/models/Proposal.js`)
 
 A freelancer's application and bid on an open client project.
 
@@ -244,7 +220,7 @@ A freelancer's application and bid on an open client project.
 - Indexes: `{ freelancer: 1, createdAt: -1 }`, `{ project: 1, status: 1 }`
 - Timestamps: `createdAt`, `updatedAt`
 
-### 7. Contract (`src/models/Contract.js`)
+### 5. Contract (`src/models/Contract.js`)
 
 The formal engagement agreement created upon accepting a proposal.
 
@@ -260,7 +236,7 @@ The formal engagement agreement created upon accepting a proposal.
 - Indexes: `{ client: 1, createdAt: -1 }`, `{ freelancer: 1, createdAt: -1 }`
 - Timestamps: `createdAt`, `updatedAt`
 
-### 8. Message (`src/models/Message.js`)
+### 6. Message (`src/models/Message.js`)
 
 Project-related communication exchanged between participants.
 
@@ -272,7 +248,7 @@ Project-related communication exchanged between participants.
 - Indexes: `{ project: 1, createdAt: 1 }`, `{ receiver: 1, isRead: 1, createdAt: -1 }`
 - Timestamps: `createdAt`, `updatedAt`
 
-### 9. Review (`src/models/Review.js`)
+### 7. Review (`src/models/Review.js`)
 
 Post-contract performance review and rating.
 
@@ -495,73 +471,7 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 
 ---
 
-### 4. Skills Endpoints
-
-#### GET /api/skills
-
-- **Purpose:** Lists all standardized skills in the platform catalog sorted alphabetically.
-- **Authentication:** Not required (Public).
-- **Response:** HTTP `200` with array of skill objects.
-
-#### GET /api/skills/:id
-
-- **Purpose:** Retrieves a single skill by ID.
-- **Authentication:** Not required (Public).
-- **Response:** HTTP `200` with skill object.
-- **Errors:** `SKILL_NOT_FOUND` (404), `INVALID_ID` (400).
-
-#### POST /api/skills
-
-- **Purpose:** Creates a new standardized skill in the catalog.
-- **Authentication:** Required.
-- **Role:** `ADMIN`.
-- **Request Body:**
-  - `name` (String, required, max 80 chars)
-  - `description` (String, optional, max 500 chars)
-- **What happens:** Checks for existing skill by lowercase name, then creates Skill.
-- **Response:** HTTP `201` with created skill object.
-- **Errors:** `FORBIDDEN` (403), `VALIDATION_ERROR` (400), `SKILL_EXISTS` (409).
-
----
-
-### 5. Services Endpoints
-
-#### GET /api/services
-
-- **Purpose:** Lists all freelancer service packages sorted by newest first.
-- **Authentication:** Not required (Public).
-- **What happens:** Finds all services, populates `freelancer` (name, email, role, profileImage) and `skills` (name, description).
-- **Response:** HTTP `200` with array of service objects.
-
-#### GET /api/services/:id
-
-- **Purpose:** Retrieves a single service offering by ID with populated details.
-- **Authentication:** Not required (Public).
-- **Response:** HTTP `200` with service object.
-- **Errors:** `SERVICE_NOT_FOUND` (404), `INVALID_ID` (400).
-
-#### POST /api/services
-
-- **Purpose:** Creates a new pre-packaged service offering.
-- **Authentication:** Required.
-- **Role:** `FREELANCER`.
-- **Request Body:**
-  - `title` (String, required, 3-100 chars)
-  - `description` (String, required, max 5000 chars)
-  - `price` (Number, required, min 5)
-  - `skills` (Array of Skill ObjectIds, optional, max 30)
-- **What happens:**
-  1. Validates input lengths and price.
-  2. Verifies that all provided skill IDs are valid ObjectIds.
-  3. Verifies each skill ID exists in the `Skill` catalog.
-  4. Creates service linked to `req.user._id`.
-  5. Populates freelancer and skill details.
-- **Response:** HTTP `201` with created service object.
-- **Errors:** `FORBIDDEN` (403), `VALIDATION_ERROR` (400).
-
----
-
-### 6. Projects Endpoints
+### 4. Projects Endpoints
 
 #### GET /api/projects
 
@@ -628,7 +538,7 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 
 ---
 
-### 7. Proposals Endpoints
+### 5. Proposals Endpoints
 
 #### POST /api/proposals
 
@@ -699,7 +609,7 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 
 ---
 
-### 8. Contracts Endpoints
+### 6. Contracts Endpoints
 
 #### GET /api/contracts
 
@@ -734,7 +644,7 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 
 ---
 
-### 9. Reviews Endpoints
+### 7. Reviews Endpoints
 
 #### POST /api/reviews
 
@@ -763,28 +673,29 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 
 ---
 
-### 10. Messages Endpoints
+### 8. Messages Endpoints
 
 #### POST /api/messages
 
 - **Purpose:** Sends a direct message tied to a specific project.
-- **Authentication:** Required.
+- **Authentication:** Required (`ADMIN` accounts are rejected with HTTP `403`).
 - **Request Body:**
   - `receiver` (User ObjectId, required)
   - `project` (Project ObjectId, required)
   - `content` (String, required, max 5000 chars)
 - **What happens:**
-  1. Verifies caller is not messaging themselves.
-  2. Verifies project and receiver exist.
-  3. Validates that sender and receiver have a valid relationship on the project (as client, proposal applicant, or contract participant).
-  4. Creates Message document with `isRead: false`.
+  1. Rejects `ADMIN` callers with `403 Forbidden`.
+  2. Verifies caller is not messaging themselves.
+  3. Verifies project and receiver exist.
+  4. Validates that sender and receiver have a valid relationship on the project (as client, proposal applicant, or contract participant).
+  5. Creates Message document with `isRead: false`.
 - **Response:** HTTP `201` with created message object.
 - **Errors:** `VALIDATION_ERROR` (400), `PROJECT_NOT_FOUND` (404), `USER_NOT_FOUND` (404), `FORBIDDEN` (403).
 
 #### GET /api/messages/project/:projectId
 
 - **Purpose:** Retrieves all messages exchanged on a project.
-- **Authentication:** Required (caller must be project client or participant).
+- **Authentication:** Required (`ADMIN` accounts are rejected with HTTP `403`; caller must be project client or participant).
 - **Query Parameters:** `page`, `limit`.
 - **Response:** HTTP `200` with `messages` array sorted chronologically and `pagination`.
 - **Errors:** `PROJECT_NOT_FOUND` (404), `FORBIDDEN` (403), `INVALID_ID` (400).
@@ -842,8 +753,6 @@ const roleMiddleware = (...roles) => {
   - `GET /`, `GET /health`
   - `POST /api/auth/register`, `POST /api/auth/login`
   - `POST /api/auth/forgot-password`, `POST /api/auth/verify-reset-otp`, `POST /api/auth/reset-password`
-  - `GET /api/skills`, `GET /api/skills/:id`
-  - `GET /api/services`, `GET /api/services/:id`
   - `GET /api/projects`, `GET /api/projects/:id`
 - **Authenticated (Any Role):**
   - `PATCH /api/auth/change-password`
@@ -854,7 +763,7 @@ const roleMiddleware = (...roles) => {
   - `GET /api/contracts`, `GET /api/contracts/:id` (participant check)
   - `PATCH /api/contracts/:id/complete`, `PATCH /api/contracts/:id/cancel` (participant check)
   - `POST /api/reviews`, `GET /api/reviews/user/:id`
-  - `POST /api/messages`, `GET /api/messages/project/:projectId`, `PATCH /api/messages/:id/read`
+  - `POST /api/messages`, `GET /api/messages/project/:projectId`, `PATCH /api/messages/:id/read` (participant check; `ADMIN` explicitly forbidden)
 - **Client Role Only (`roleMiddleware("CLIENT")`):**
   - `GET /api/projects/my`
   - `POST /api/projects`, `PUT /api/projects/:id`, `DELETE /api/projects/:id`
@@ -862,11 +771,9 @@ const roleMiddleware = (...roles) => {
   - `PATCH /api/proposals/:id/accept`, `PATCH /api/proposals/:id/reject`
 - **Freelancer Role Only (`roleMiddleware("FREELANCER")`):**
   - `GET /api/users/freelancer-profile`, `PUT /api/users/freelancer-profile`
-  - `POST /api/services`
   - `POST /api/proposals`, `GET /api/proposals/my`
 - **Admin Role Only (`roleMiddleware("ADMIN")`):**
   - `GET /api/users/admin/all`, `GET /api/users/admin/:id`, `DELETE /api/users/admin/:id`
-  - `POST /api/skills`
 
 ---
 
@@ -898,15 +805,15 @@ Whenever an error occurs in asynchronous route handlers, `next(error)` delegates
 - **Authentication Errors (`UNAUTHORIZED` - HTTP 401):** Missing, expired, or corrupted Bearer tokens.
 - **Credentials Errors (`INVALID_CREDENTIALS` - HTTP 401):** Wrong email or password during login.
 - **Authorization Errors (`FORBIDDEN` - HTTP 403):** Role insufficiency or attempting to access resources belonging to other participants.
-- **Resource Not Found (HTTP 404):** Returned when documents do not exist (`USER_NOT_FOUND`, `PROJECT_NOT_FOUND`, `PROPOSAL_NOT_FOUND`, `CONTRACT_NOT_FOUND`, `SERVICE_NOT_FOUND`, `SKILL_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `NOT_FOUND`).
-- **Conflict / Business Rule Errors (HTTP 409):** State machine conflicts such as `USER_EXISTS`, `SKILL_EXISTS`, `PROPOSAL_EXISTS`, `REVIEW_EXISTS`, `PROJECT_NOT_OPEN`, `PROPOSAL_NOT_PENDING`, `CONTRACT_NOT_ACTIVE`.
+- **Resource Not Found (HTTP 404):** Returned when documents do not exist (`USER_NOT_FOUND`, `PROJECT_NOT_FOUND`, `PROPOSAL_NOT_FOUND`, `CONTRACT_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `NOT_FOUND`).
+- **Conflict / Business Rule Errors (HTTP 409):** State machine conflicts such as `USER_EXISTS`, `PROPOSAL_EXISTS`, `REVIEW_EXISTS`, `PROJECT_NOT_OPEN`, `PROPOSAL_NOT_PENDING`, `CONTRACT_NOT_ACTIVE`.
 - **Internal Server Errors (`SERVER_ERROR` - HTTP 500):** Catches unexpected exceptions and hides sensitive stack traces from clients.
 
 ---
 
 ## G. Complete Endpoint Summary
 
-The ProLance backend provides **46 active API endpoints**:
+The ProLance backend provides **40 active API endpoints**:
 
 | Method   | Endpoint                             | Authentication | Role        | Purpose                                                |
 | :------- | :----------------------------------- | :------------- | :---------- | :----------------------------------------------------- |
@@ -928,12 +835,6 @@ The ProLance backend provides **46 active API endpoints**:
 | `DELETE` | `/api/users/admin/:id`               | Required       | Admin       | Delete user by ID and cascade related data             |
 | `GET`    | `/api/users/:id/reviews`             | Required       | Any         | Get all reviews received by a user                     |
 | `GET`    | `/api/users/:id`                     | Required       | Any         | Fetch public profile for any user                      |
-| `GET`    | `/api/skills`                        | None (Public)  | Any         | List all standardized platform skills                  |
-| `GET`    | `/api/skills/:id`                    | None (Public)  | Any         | Get details for a specific skill                       |
-| `POST`   | `/api/skills`                        | Required       | Admin       | Create a new skill in the master catalog               |
-| `GET`    | `/api/services`                      | None (Public)  | Any         | List all published freelancer services                 |
-| `GET`    | `/api/services/:id`                  | None (Public)  | Any         | Get details for a specific service package             |
-| `POST`   | `/api/services`                      | Required       | Freelancer  | Create a new service package linked to skills          |
 | `GET`    | `/api/projects`                      | None (Public)  | Any         | Browse projects with search, filter, and pagination    |
 | `GET`    | `/api/projects/my`                   | Required       | Client      | List projects owned by the calling client              |
 | `GET`    | `/api/projects/:projectId/proposals` | Required       | Client      | View proposals submitted to client's project           |

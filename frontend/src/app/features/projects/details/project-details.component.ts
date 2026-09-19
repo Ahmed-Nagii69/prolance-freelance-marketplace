@@ -91,7 +91,11 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                   <p class="pl-label mb-2">The client</p>
                   <div class="d-flex align-items-center gap-3 flex-wrap">
                     <span class="pl-avatar pl-avatar--lg">
-                      {{ initialsOf(client.name) }}
+                      @if (client.profileImage) {
+                        <img [src]="client.profileImage" alt="" />
+                      } @else {
+                        {{ initialsOf(client.name) }}
+                      }
                     </span>
                     <div>
                       <p class="mb-0 fw-semibold">{{ client.name }}</p>
@@ -176,8 +180,8 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                 @if (user(); as currentUser) {
                   @if (ownProject(currentUser)) {
                     <div class="pl-message">
-                      This is your project. You can review proposals and open a
-                      conversation once a contract begins.
+                      This is your project. Proposals from freelancers will
+                      appear here, and you can review and accept them.
                     </div>
                   } @else if (currentUser.role === 'FREELANCER') {
                     @if (project()!.status === 'OPEN') {
@@ -189,12 +193,9 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                           >.
                         </div>
                       } @else {
-                        <div>
-                          <p class="pl-label mb-2">Submit a proposal</p>
-                          <pl-submit-proposal
-                            [projectId]="project()!._id"
-                            (submitted)="onProposalSubmitted()"
-                          />
+                        <div class="pl-message">
+                          This project is open for proposals — use the form
+                          below to apply.
                         </div>
                       }
                     } @else {
@@ -216,6 +217,28 @@ import { extractApiMessage } from '../../../core/utils/http-error';
               </div>
             </div>
           </div>
+
+          @if (canSubmitProposal()) {
+            <div class="row mt-4">
+              <div class="col-12">
+                <div class="pl-panel">
+                  <p class="pl-kicker mb-1">Apply</p>
+                  <h2 class="pl-headline mb-1" style="font-size: 1.8rem">
+                    Submit a proposal
+                  </h2>
+                  <p class="pl-faint mb-3" style="font-size: 0.9rem">
+                    Bids are accepted up to the project budget of
+                    {{ formatCurrency(project()!.budget) }}.
+                  </p>
+                  <pl-submit-proposal
+                    [projectId]="project()!._id"
+                    [budget]="project()!.budget"
+                    (submitted)="onProposalSubmitted()"
+                  />
+                </div>
+              </div>
+            </div>
+          }
         </div>
       </section>
     }
@@ -304,10 +327,15 @@ export class ProjectDetails {
     });
   }
 
-  clientPanel(): { name: string; email: string; _id: string } | null {
+  clientPanel(): { name: string; email: string; _id: string; profileImage?: string } | null {
     const client = this.project()?.client;
     if (typeof client === 'object' && client !== null && '_id' in client) {
-      return { name: client.name, email: client.email, _id: client._id };
+      return {
+        name: client.name,
+        email: client.email,
+        _id: client._id,
+        profileImage: client.profileImage,
+      };
     }
     return null;
   }
@@ -328,6 +356,15 @@ export class ProjectDetails {
     const currentUser = this.auth.user();
     return (
       currentUser?.role === 'CLIENT' && this.ownProject(currentUser)
+    );
+  }
+
+  canSubmitProposal(): boolean {
+    const currentUser = this.auth.user();
+    return (
+      currentUser?.role === 'FREELANCER' &&
+      this.project()?.status === 'OPEN' &&
+      !this.myProposal()
     );
   }
 

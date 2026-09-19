@@ -1,17 +1,24 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
+import { WalletService } from '../../../core/services/resource.services';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
-import { initialsOf, roleDisplay } from '../../../core/utils/format';
+import {
+  formatCurrency,
+  formatDateTime,
+  initialsOf,
+  roleDisplay,
+} from '../../../core/utils/format';
 import { extractApiMessage } from '../../../core/utils/http-error';
-import { Role } from '../../../core/models/models';
+import { Role, WalletData } from '../../../core/models/models';
 
 @Component({
   selector: 'pl-profile-home',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   template: `
     <div class="pl-page-title">
       <div class="pl-container">
@@ -35,8 +42,92 @@ import { Role } from '../../../core/models/models';
               <p class="mb-0">
                 <span class="pl-tag pl-tag--dark">{{ roleDisplay(role()) }}</span>
               </p>
-              @if (user()?.bio) {
-                <p class="pl-muted mt-3 mb-0" style="font-size: 0.9rem">{{ user()!.bio }}</p>
+            </div>
+
+            @if (role() === 'FREELANCER') {
+              <div class="pl-panel mt-4">
+                <p class="pl-label mb-1">Freelancer profile</p>
+                <p class="pl-muted" style="font-size: 0.9rem">
+                  Manage the headline, hourly rate and skills shown on your
+                  public profile.
+                </p>
+                <a routerLink="/profile/freelancer" class="pl-btn pl-btn--dark pl-btn--sm">
+                  Edit freelancer profile
+                </a>
+              </div>
+            }
+
+            <div class="pl-panel mt-4">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <p class="pl-label mb-0">Wallet</p>
+                @if (walletLoading()) {
+                  <span class="pl-faint" style="font-size: 0.8rem">Loading…</span>
+                }
+              </div>
+              <p
+                class="mb-0"
+                style="font-family: var(--pl-font-display); font-size: 2.1rem; line-height: 1.1"
+              >
+                {{ formatCurrency(wallet()?.balance ?? 0) }}
+              </p>
+              <p class="pl-faint" style="font-size: 0.85rem">Available balance</p>
+
+              @if (role() === 'CLIENT') {
+                <form (ngSubmit)="fundWallet()" novalidate>
+                  <div class="d-flex gap-2">
+                    <input
+                      type="number"
+                      class="pl-input"
+                      min="1"
+                      [(ngModel)]="fundAmount"
+                      name="fundAmount"
+                      placeholder="Amount (USD)"
+                      aria-label="Amount to add"
+                    />
+                    <button
+                      type="submit"
+                      class="pl-btn pl-btn--dark"
+                      [disabled]="fundSaving()"
+                    >
+                      {{ fundSaving() ? 'Adding…' : 'Add funds' }}
+                    </button>
+                  </div>
+                  @if (walletError(); as message) {
+                    <div
+                      class="pl-message mt-2"
+                      style="color: var(--pl-burgundy)"
+                      role="alert"
+                    >
+                      {{ message }}
+                    </div>
+                  }
+                  <p class="pl-field-hint mt-2">
+                    Funds are held in escrow when you accept a proposal and are
+                    released to the freelancer once the work is approved.
+                  </p>
+                </form>
+              }
+
+              @if (recentTransactions().length > 0) {
+                <div class="mt-3">
+                  <p class="pl-label mb-1">Recent activity</p>
+                  <ul class="list-unstyled mb-0">
+                    @for (tx of recentTransactions(); track tx._id) {
+                      <li class="pl-tx">
+                        <div class="pl-tx__meta">
+                          <span class="pl-tx__desc">{{ tx.description }}</span>
+                          <span class="pl-tx__time">{{ formatDateTime(tx.createdAt) }}</span>
+                        </div>
+                        <span
+                          class="pl-tx__amount"
+                          [class.is-credit]="tx.type === 'CREDIT'"
+                        >
+                          {{ tx.type === 'CREDIT' ? '+' : '−' }}{{ formatCurrency(tx.amount) }}
+                        </span>
+                      </li>
+                    }
+                  </ul>
+                </div>
               }
             </div>
           </div>
@@ -58,28 +149,45 @@ import { Role } from '../../../core/models/models';
                   />
                 </div>
                 <div class="pl-field">
-                  <label class="pl-label-inline" for="pp-image">Profile image URL</label>
-                  <input
-                    id="pp-image"
-                    type="url"
-                    class="pl-input"
-                    maxlength="1000"
-                    [(ngModel)]="profileImage"
-                    name="profileImage"
-                    placeholder="https://…"
-                  />
-                </div>
-                <div class="pl-field">
-                  <label class="pl-label-inline" for="pp-bio">Bio</label>
-                  <textarea
-                    id="pp-bio"
-                    class="pl-textarea"
-                    maxlength="2000"
-                    [(ngModel)]="bio"
-                    name="bio"
-                    rows="4"
-                    placeholder="What do you do?"
-                  ></textarea>
+                  <label class="pl-label-inline">Profile photo</label>
+                  <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
+                    @if (profileImage()) {
+                      <img [src]="profileImage()" class="pl-avatar pl-avatar--xl" alt="" />
+                    } @else {
+                      <span class="pl-avatar pl-avatar--xl">{{ initialsOf(name()) }}</span>
+                    }
+                    <div class="d-flex flex-column gap-2 align-items-start">
+                      <button
+                        type="button"
+                        class="pl-btn pl-btn--dark pl-btn--sm"
+                        (click)="photoInput.click()"
+                        [disabled]="photoUploading()"
+                      >
+                        {{ photoUploading() ? 'Uploading…' : 'Choose photo' }}
+                      </button>
+                      @if (profileImage()) {
+                        <button
+                          type="button"
+                          class="pl-btn pl-btn--danger pl-btn--sm"
+                          (click)="removePhoto()"
+                        >
+                          Remove photo
+                        </button>
+                      }
+                    </div>
+                    <input
+                      #photoInput
+                      class="d-none"
+                      type="file"
+                      accept="image/*"
+                      (change)="onPhotoSelected($event)"
+                    />
+                  </div>
+                  @if (photoError(); as message) {
+                    <div class="pl-message" style="color: var(--pl-burgundy)" role="alert">
+                      {{ message }}
+                    </div>
+                  }
                 </div>
                 <div class="pl-field">
                   <label class="pl-label-inline" for="pp-skills">Skills (comma separated, lowercase)</label>
@@ -160,7 +268,7 @@ import { Role } from '../../../core/models/models';
               <p class="pl-label mb-2" style="color: var(--pl-burgundy)">Danger zone</p>
               <p class="pl-muted mb-3" style="font-size: 0.9rem">
                 Deleting your account removes your profile, projects, proposals,
-                contracts, services and messages. This cannot be undone.
+                contracts, messages and reviews. This cannot be undone.
               </p>
               <button
                 type="button"
@@ -180,17 +288,19 @@ import { Role } from '../../../core/models/models';
 export class ProfileHome {
   private readonly auth = inject(AuthService);
   private readonly userService = inject(UserService);
+  private readonly walletService = inject(WalletService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
 
   protected readonly user = this.auth.user;
 
   protected readonly name = signal('');
-  protected readonly bio = signal('');
   protected readonly profileImage = signal('');
   protected readonly skillsCsv = signal('');
   protected readonly profileSaving = signal(false);
   protected readonly profileError = signal('');
+  protected readonly photoUploading = signal(false);
+  protected readonly photoError = signal('');
 
   protected readonly currentPassword = signal('');
   protected readonly newPassword = signal('');
@@ -199,15 +309,67 @@ export class ProfileHome {
 
   protected readonly deleting = signal(false);
 
+  protected readonly wallet = signal<WalletData | null>(null);
+  protected readonly walletLoading = signal(false);
+  protected readonly walletError = signal('');
+  protected readonly fundAmount = signal<number | string>('');
+  protected readonly fundSaving = signal(false);
+
   protected readonly email = computed<string>(() => this.user()?.email ?? '');
   protected readonly role = computed<Role>(() => this.user()?.role ?? 'CLIENT');
+  protected readonly recentTransactions = computed(() =>
+    this.wallet()?.transactions.slice(0, 5) ?? [],
+  );
   protected readonly initialsOf = initialsOf;
   protected readonly roleDisplay = roleDisplay;
+  protected readonly formatCurrency = formatCurrency;
+  protected readonly formatDateTime = formatDateTime;
 
   constructor() {
     this.auth.refreshUser().subscribe({
-      next: () => this.syncFromUser(),
+      next: () => {
+        this.syncFromUser();
+        this.loadWallet();
+      },
       error: () => void 0,
+    });
+  }
+
+  private loadWallet(): void {
+    this.walletLoading.set(true);
+    this.walletError.set('');
+    this.walletService.getWallet().subscribe({
+      next: (data) => {
+        this.wallet.set(data);
+        this.walletLoading.set(false);
+      },
+      error: () => {
+        this.walletLoading.set(false);
+      },
+    });
+  }
+
+  fundWallet(): void {
+    const amount = Number(this.fundAmount());
+    if (!Number.isFinite(amount) || amount <= 0) {
+      this.walletError.set('Enter a positive amount to add to your wallet.');
+      return;
+    }
+    this.fundSaving.set(true);
+    this.walletError.set('');
+    this.walletService.fundWallet(amount).subscribe({
+      next: () => {
+        this.fundAmount.set('');
+        this.fundSaving.set(false);
+        this.toast.success('Funds added to your wallet.');
+        this.loadWallet();
+      },
+      error: (err) => {
+        this.walletError.set(
+          extractApiMessage(err, 'Unable to add funds to your wallet.'),
+        );
+        this.fundSaving.set(false);
+      },
     });
   }
 
@@ -215,7 +377,6 @@ export class ProfileHome {
     const current = this.user();
     if (!current) return;
     this.name.set(current.name);
-    this.bio.set(current.bio);
     this.profileImage.set(current.profileImage);
     this.skillsCsv.set(current.skills.join(', '));
   }
@@ -228,7 +389,6 @@ export class ProfileHome {
     }
     const payload = {
       name,
-      bio: this.bio(),
       profileImage: this.profileImage(),
       skills: this.skillsCsv()
         .split(',')
@@ -250,6 +410,49 @@ export class ProfileHome {
     });
   }
 
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      this.photoError.set('Please choose an image file.');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      this.photoError.set('Image must be 3 MB or smaller.');
+      return;
+    }
+    this.photoError.set('');
+    this.photoUploading.set(true);
+    this.userService.uploadProfilePhoto(file).subscribe({
+      next: (user) => {
+        this.auth.adoptUser(user);
+        this.profileImage.set(user.profileImage);
+        this.photoUploading.set(false);
+        this.toast.success('Profile photo updated.');
+      },
+      error: (err) => {
+        this.photoError.set(extractApiMessage(err, 'Unable to upload your photo.'));
+        this.photoUploading.set(false);
+      },
+    });
+  }
+
+  removePhoto(): void {
+    this.photoError.set('');
+    this.userService.updateProfile({ profileImage: '' }).subscribe({
+      next: (user) => {
+        this.auth.adoptUser(user);
+        this.profileImage.set('');
+        this.toast.success('Profile photo removed.');
+      },
+      error: (err) => {
+        this.photoError.set(extractApiMessage(err, 'Unable to remove your photo.'));
+      },
+    });
+  }
+
   changePassword(): void {
     const currentPassword = this.currentPassword();
     const newPassword = this.newPassword();
@@ -257,11 +460,16 @@ export class ProfileHome {
       this.passwordError.set('Enter your current password and a new password of at least 6 characters.');
       return;
     }
+    if (currentPassword === newPassword) {
+      this.passwordError.set('Your new password must be different from your current password.');
+      return;
+    }
     this.passwordSaving.set(true);
     this.passwordError.set('');
     this.auth.changePassword(currentPassword, newPassword).subscribe({
-      next: () => {
-        this.toast.success('Password updated.');
+      next: (data) => {
+        this.auth.setToken(data.token);
+        this.toast.success('Password updated. Your session was refreshed.');
         this.currentPassword.set('');
         this.newPassword.set('');
         this.passwordSaving.set(false);
