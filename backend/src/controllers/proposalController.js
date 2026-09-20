@@ -168,7 +168,7 @@ const getProjectProposals = async (req, res, next) => {
     const filter = { project: req.params.projectId };
     const total = await Proposal.countDocuments(filter);
     const proposals = await Proposal.find(filter)
-      .populate("freelancer", "name email role skills")
+      .populate("freelancer", "name email role skills profileImage")
       .sort({ createdAt: -1 })
       .skip((parsedPage - 1) * parsedLimit)
       .limit(parsedLimit);
@@ -195,7 +195,7 @@ const getProposalById = async (req, res, next) => {
   try {
     const proposal = await Proposal.findById(req.params.id)
       .populate("project", "title description client status")
-      .populate("freelancer", "name email role");
+      .populate("freelancer", "name email role profileImage");
 
     if (!proposal) {
       return sendResponse(res, 404, "Proposal not found", null, {

@@ -19,6 +19,8 @@
     "@angular/router": "^22.1.0",
     "@tabler/icons-angular": "^3.47.0",
     "bootstrap": "^5.3.8",
+    "chart.js": "^4.5.1",
+    "ng2-charts": "^5.0.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

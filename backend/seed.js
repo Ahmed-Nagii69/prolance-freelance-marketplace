@@ -42,8 +42,9 @@ async function run() {
     password: await hash("AdminPass123!"),
     role: "ADMIN",
     bio: "Platform administrator.",
+    profileImage:
+      "https://ui-avatars.com/api/?name=Site+Admin&background=0d6efd&color=fff",
   });
-
   const clientAmara = await User.create({
     name: "Amara Okafor",
     email: "client@prolance.dev",
@@ -51,6 +52,8 @@ async function run() {
     role: "CLIENT",
     bio: "Product lead at a fast-growing fintech.",
     balance: 14100,
+    profileImage:
+      "https://ui-avatars.com/api/?name=Amara+Okafor&background=694451&color=fff",
   });
   const clientArjun = await User.create({
     name: "Arjun Mehta",
@@ -59,8 +62,9 @@ async function run() {
     role: "CLIENT",
     bio: "Founder of a speciality coffee brand.",
     balance: 6800,
+    profileImage:
+      "https://ui-avatars.com/api/?name=Arjun+Mehta&background=5b3f73&color=fff",
   });
-
   const freDana = await User.create({
     name: "Dana Cole",
     email: "freelancer@prolance.dev",
@@ -69,6 +73,8 @@ async function run() {
     bio: "Full-stack engineer building reliable web products.",
     skills: ["typescript", "react", "node"],
     balance: 5900,
+    profileImage:
+      "https://ui-avatars.com/api/?name=Dana+Cole&background=245c5a&color=fff",
   });
   const freNoor = await User.create({
     name: "Noor Haddad",
@@ -76,6 +82,8 @@ async function run() {
     password: await hash("Password123!"),
     role: "FREELANCER",
     bio: "Brand and product designer.",
+    profileImage:
+      "https://ui-avatars.com/api/?name=Noor+Haddad&background=a98245&color=fff",
   });
   const freSam = await User.create({
     name: "Sam Fields",
@@ -84,6 +92,8 @@ async function run() {
     role: "FREELANCER",
     bio: "Writer and SEO strategist.",
     skills: ["copywriting", "seo"],
+    profileImage:
+      "https://ui-avatars.com/api/?name=Sam+Fields&background=18413f&color=fff",
   });
 
   await FreelancerProfile.create([
@@ -240,21 +250,24 @@ async function run() {
       sender: clientAmara._id,
       receiver: freDana._id,
       project: pStorefront._id,
-      content: "Hi Dana — thanks for the proposal. Quick question on the SSR setup.",
+      content:
+        "Hi Dana — thanks for the proposal. Quick question on the SSR setup.",
       isRead: true,
     },
     {
       sender: freDana._id,
       receiver: clientAmara._id,
       project: pStorefront._id,
-      content: "Happy to! We'd use Angular Universal — same pattern as your previous site.",
+      content:
+        "Happy to! We'd use Angular Universal — same pattern as your previous site.",
       isRead: true,
     },
     {
       sender: clientArjun._id,
       receiver: freNoor._id,
       project: pBrand._id,
-      content: "The moodboard direction is great. Could we see the type options by Friday?",
+      content:
+        "The moodboard direction is great. Could we see the type options by Friday?",
       isRead: false,
     },
   ]);
@@ -266,7 +279,8 @@ async function run() {
       reviewer: clientAmara._id,
       reviewee: freDana._id,
       rating: 5,
-      comment: "Delivered ahead of schedule and the battery work paid off. Would hire again.",
+      comment:
+        "Delivered ahead of schedule and the battery work paid off. Would hire again.",
     },
     {
       contract: contractTracker._id,
@@ -346,7 +360,10 @@ async function run() {
       {
         admin: { email: "admin@prolance.dev", password: "AdminPass123!" },
         client: { email: "client@prolance.dev", password: "Password123!" },
-        freelancer: { email: "freelancer@prolance.dev", password: "Password123!" },
+        freelancer: {
+          email: "freelancer@prolance.dev",
+          password: "Password123!",
+        },
         projects: 5,
         proposals: 5,
         contracts: { active: 1, completed: 1 },

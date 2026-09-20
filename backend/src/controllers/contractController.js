@@ -47,8 +47,8 @@ const getContracts = async (req, res, next) => {
     const contracts = await Contract.find(filter)
       .populate("project", "title status budget")
       .populate("proposal", "coverLetter price deliveryTime")
-      .populate("client", "name email")
-      .populate("freelancer", "name email")
+      .populate("client", "name email profileImage")
+      .populate("freelancer", "name email profileImage")
       .sort({ createdAt: -1 })
       .skip((parsedPage - 1) * parsedLimit)
       .limit(parsedLimit);
@@ -74,8 +74,8 @@ const getContractById = async (req, res, next) => {
     const contract = await Contract.findById(req.params.id)
       .populate("project", "title status budget client")
       .populate("proposal", "coverLetter price deliveryTime")
-      .populate("client", "name email")
-      .populate("freelancer", "name email");
+      .populate("client", "name email profileImage")
+      .populate("freelancer", "name email profileImage");
 
     if (!contract) {
       return sendResponse(res, 404, "Contract not found", null, {

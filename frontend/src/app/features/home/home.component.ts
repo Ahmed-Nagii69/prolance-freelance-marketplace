@@ -6,6 +6,7 @@ import { Project, User } from '../../core/models/models';
 import { formatCurrency } from '../../core/utils/format';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge.component';
 import { SkillTags } from '../../shared/components/skill-tags/skill-tags.component';
+import { Spinner } from '../../shared/components/loading/loading.component';
 
 interface NextStep {
   step: string;
@@ -17,7 +18,7 @@ interface NextStep {
 @Component({
   selector: 'pl-home',
   standalone: true,
-  imports: [RouterLink, StatusBadge, SkillTags],
+  imports: [RouterLink, StatusBadge, SkillTags, Spinner],
   template: `
     <section class="pl-hero">
       <div class="pl-container">
@@ -64,14 +65,17 @@ interface NextStep {
             </div>
 
             <div class="pl-hero__meta">
-              <span class="pl-faint">Open briefs live now</span>
+              <span class="pl-hero__meta-link">Open briefs live now</span>
               <span class="pl-faint">·</span>
-              <span class="pl-faint">Verified reviews after completion</span>
+              <span class="pl-hero__meta-link">Verified reviews after completion</span>
             </div>
           </div>
           <div class="col-12 col-lg-5">
             @if (projectsLoading()) {
-              <div class="pl-panel"><span class="pl-faint">Loading briefs…</span></div>
+              <div class="pl-panel pl-hero__loading">
+                <pl-spinner />
+                <span class="pl-faint">Loading briefs…</span>
+              </div>
             } @else {
               <div class="d-flex flex-column gap-3">
                 @for (project of featured(); track project._id) {
@@ -124,15 +128,15 @@ interface NextStep {
               <div class="col-12 col-md-6 col-lg-3">
                 <a
                   [routerLink]="step.link"
-                  class="pl-card pl-card--hover h-100"
+                  class="pl-card pl-card--hover pl-step h-100"
                   style="text-decoration: none"
                 >
-                  <p class="pl-h2 m-0" style="color: var(--pl-brass)">
+                  <p class="pl-step__number mb-0">
                     {{ step.step }}
                   </p>
-                  <p class="pl-card__title">{{ step.title }}</p>
-                  <p class="pl-card__meta mb-0">{{ step.detail }}</p>
-                  <span class="pl-faded-link">Start →</span>
+                  <p class="pl-step__title">{{ step.title }}</p>
+                  <p class="pl-step__detail mb-0">{{ step.detail }}</p>
+                  <span class="pl-step__cta">Start →</span>
                 </a>
               </div>
             }

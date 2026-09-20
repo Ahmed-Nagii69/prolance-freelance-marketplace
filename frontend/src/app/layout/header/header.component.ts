@@ -32,7 +32,7 @@ import { Notification, User } from '../../core/models/models';
             [class.is-open]="menuOpen()"
             aria-label="Primary"
           >
-            <a routerLink="/projects" routerLinkActive="is-active" class="pl-nav__link">
+            <a routerLink="/projects" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }" class="pl-nav__link">
               Projects
             </a>
 
@@ -47,9 +47,11 @@ import { Notification, User } from '../../core/models/models';
                   My proposals
                 </a>
               }
-              <a routerLink="/contracts" routerLinkActive="is-active" class="pl-nav__link">
-                Contracts
-              </a>
+              @if (currentUser.role !== 'ADMIN') {
+                <a routerLink="/contracts" routerLinkActive="is-active" class="pl-nav__link">
+                  Contracts
+                </a>
+              }
               @if (currentUser.role !== 'ADMIN') {
                 <a
                   routerLink="/messages"

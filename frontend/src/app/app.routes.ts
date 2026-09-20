@@ -95,6 +95,11 @@ export const routes: Routes = [
         path: 'admin',
         component: AdminWorkspace,
         canActivate: [authGuard, roleGuard(['ADMIN'])],
+        children: [
+          { path: '', component: AdminWorkspace, canActivate: [authGuard, roleGuard(['ADMIN'])] },
+          { path: 'users', component: AdminWorkspace, canActivate: [authGuard, roleGuard(['ADMIN'])] },
+          { path: '**', redirectTo: '', pathMatch: 'full' },
+        ],
       },
       { path: '**', redirectTo: '', pathMatch: 'full' },
     ],

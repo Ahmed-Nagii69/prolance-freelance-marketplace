@@ -530,10 +530,15 @@ a:hover {
 
 .pl-status::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background-color: currentColor;
+  transition: transform 120ms ease;
+}
+
+.pl-status:hover::before {
+  transform: scale(1.25);
 }
 
 .pl-status--open {
@@ -690,7 +695,7 @@ a:hover {
   background-color: var(--pl-espresso);
   color: var(--pl-ivory);
   border-radius: var(--pl-radius);
-  border-left: 3px solid var(--pl-brass);
+  border-left: 3px solid var(--pl-petrol);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
   font-size: 0.9rem;
   animation: pl-toast-in 180ms ease;
@@ -944,6 +949,11 @@ a:hover {
   border-color: var(--pl-line-strong);
 }
 
+.pl-icon-btn:focus-visible {
+  outline: 2px solid var(--pl-petrol);
+  outline-offset: 2px;
+}
+
 .pl-badge-dot--bell {
   position: absolute;
   top: -0.28rem;
@@ -1105,6 +1115,23 @@ a:hover {
   flex-wrap: wrap;
   gap: 0.8rem;
   margin-top: 1.8rem;
+}
+
+.pl-hero__meta-link {
+  color: var(--pl-ink-faint);
+  font-size: 0.85rem;
+  transition: color 140ms ease;
+}
+
+.pl-hero__meta-link:hover {
+  color: var(--pl-petrol);
+}
+
+.pl-hero__loading {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--pl-ink-faint);
+  font-size: 0.9rem;
 }
 
 .pl-feature {
@@ -1291,6 +1318,11 @@ a:hover {
   color: var(--pl-ivory);
 }
 
+.pl-chip:focus-visible {
+  outline: 2px solid var(--pl-petrol);
+  outline-offset: 2px;
+}
+
 .pl-tabs {
   display: flex;
   gap: 0.25rem;
@@ -1316,6 +1348,12 @@ a:hover {
 .pl-tab.is-active {
   color: var(--pl-petrol);
   border-bottom-color: var(--pl-petrol);
+}
+
+.pl-tab:focus-visible {
+  outline: 2px solid var(--pl-petrol);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .pl-table-wrap {

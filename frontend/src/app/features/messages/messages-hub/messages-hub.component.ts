@@ -35,25 +35,23 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
             @for (conversation of conversations(); track conversation.project._id) {
               <a
                 [routerLink]="['/messages/project', conversation.project._id]"
-                class="pl-card pl-card--hover"
-                style="text-decoration: none; flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap"
+                class="pl-card pl-card--hover pl-message-hub-card"
+                style="text-decoration: none"
               >
-                <div class="d-flex align-items-center gap-3 flex-grow-1">
-                  <span class="pl-avatar">
-                    @if (conversation.other?.profileImage) {
-                      <img [src]="conversation.other?.profileImage" alt="" />
-                    } @else {
-                      {{ initialsOf(conversation.other?.name ?? '?') }}
-                    }
-                  </span>
-                  <div>
-                    <p class="mb-0 fw-semibold">{{ conversation.project.title }}</p>
-                    <p class="pl-faint mb-0" style="font-size: 0.88rem">
-                      with {{ conversation.other?.name ?? '—' }}
-                    </p>
-                  </div>
+                <span class="pl-avatar pl-message-hub-avatar">
+                  @if (conversation.other?.profileImage) {
+                    <img [src]="conversation.other?.profileImage" alt="" />
+                  } @else {
+                    {{ initialsOf(conversation.other?.name ?? '?') }}
+                  }
+                </span>
+                <div class="pl-message-hub-info">
+                  <p class="pl-message-hub-title">{{ conversation.project.title }}</p>
+                  <p class="pl-message-hub-participant">
+                    with {{ conversation.other?.name ?? '—' }}
+                  </p>
                 </div>
-                <div class="d-flex align-items-center gap-3">
+                <div class="pl-message-hub-link">
                   @if (conversation.contractStatus) {
                     <pl-status-badge [status]="conversation.contractStatus" />
                   } @else {

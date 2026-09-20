@@ -218,6 +218,13 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                       >Open conversation</a
                     >
                   }
+                  @if (user()?.role !== 'ADMIN') {
+                    <a
+                      [routerLink]="['/messages/project', contract()!.project._id]"
+                      class="pl-btn pl-btn--outline pl-btn--sm"
+                      >Message</a
+                    >
+                  }
                   @if (actions()!.cancel) {
                     <button
                       type="button"

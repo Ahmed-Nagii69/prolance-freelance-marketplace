@@ -22,7 +22,8 @@ const createProject = async (req, res, next) => {
       budget === null ||
       durationDays === undefined ||
       durationDays === null ||
-      (skills !== undefined && (!Array.isArray(skills) || skills.length > 30)) ||
+      (skills !== undefined &&
+        (!Array.isArray(skills) || skills.length > 30)) ||
       Number.isNaN(parsedBudget) ||
       parsedBudget <= 0 ||
       !Number.isInteger(parsedDurationDays) ||
@@ -75,8 +76,10 @@ const getProjects = async (req, res, next) => {
     const parsedLimit = limit === undefined ? 20 : Number(limit);
 
     if (
-      (search !== undefined && (typeof search !== "string" || search.length > 200)) ||
-      (skill !== undefined && (typeof skill !== "string" || skill.length > 100)) ||
+      (search !== undefined &&
+        (typeof search !== "string" || search.length > 200)) ||
+      (skill !== undefined &&
+        (typeof skill !== "string" || skill.length > 100)) ||
       (status !== undefined &&
         !["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"].includes(status)) ||
       (minBudget !== undefined &&
@@ -124,7 +127,7 @@ const getProjects = async (req, res, next) => {
 
     const sortDirection = sortOrder === "asc" ? 1 : -1;
     const query = Project.find(filter)
-      .populate("client", "name email role")
+      .populate("client", "name email role profileImage")
       .sort({ [sortBy]: sortDirection });
 
     const total = await Project.countDocuments(filter);
@@ -152,7 +155,7 @@ const getProjectById = async (req, res, next) => {
   try {
     const project = await Project.findById(req.params.id).populate(
       "client",
-      "name email role",
+      "name email role profileImage",
     );
 
     if (!project) {
@@ -198,7 +201,8 @@ const updateProject = async (req, res, next) => {
       );
     }
 
-    const { title, description, budget, durationDays, skills, status } = req.body;
+    const { title, description, budget, durationDays, skills, status } =
+      req.body;
     const cleanTitle = title === undefined ? undefined : String(title).trim();
     const cleanDescription =
       description === undefined ? undefined : String(description).trim();
@@ -211,7 +215,8 @@ const updateProject = async (req, res, next) => {
       (cleanDescription !== undefined && !cleanDescription) ||
       (parsedBudget !== undefined &&
         (!Number.isFinite(parsedBudget) || parsedBudget <= 0)) ||
-      (skills !== undefined && (!Array.isArray(skills) || skills.length > 30)) ||
+      (skills !== undefined &&
+        (!Array.isArray(skills) || skills.length > 30)) ||
       (durationDays !== undefined &&
         (!Number.isInteger(parsedDurationDays) || parsedDurationDays < 1)) ||
       status !== undefined

@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { TablerIconComponent } from '@tabler/icons-angular';
 import { AuthFrame } from '../auth-frame/auth-frame.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -9,7 +10,7 @@ import { extractApiMessage } from '../../../core/utils/http-error';
 @Component({
   selector: 'pl-login',
   standalone: true,
-  imports: [FormsModule, RouterLink, AuthFrame],
+  imports: [FormsModule, RouterLink, AuthFrame, TablerIconComponent],
   template: `
     <pl-auth-frame>
       <p class="pl-kicker">Welcome back</p>
@@ -50,9 +51,9 @@ import { extractApiMessage } from '../../../core/utils/http-error';
               type="button"
               class="pl-auth-eye"
               (click)="togglePassword()"
-              aria-label="Toggle password visibility"
+              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
             >
-              {{ showPassword() ? 'Hide' : 'Show' }}
+              <tabler-icon [icon]="showPassword() ? 'eye-off' : 'eye'" [size]="18" />
             </button>
           </div>
         </div>
@@ -97,11 +98,21 @@ import { extractApiMessage } from '../../../core/utils/http-error';
         transform: translateY(-50%);
         background: none;
         border: 0;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--pl-ink-faint);
         cursor: pointer;
-        padding: 0.3rem 0.5rem;
+        color: var(--pl-ink-faint);
+        padding: 0.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 120ms ease;
+      }
+
+      .pl-auth-eye:hover {
+        color: var(--pl-ink);
+      }
+
+      .pl-auth-eye svg {
+        display: block;
       }
     `,
   ],
