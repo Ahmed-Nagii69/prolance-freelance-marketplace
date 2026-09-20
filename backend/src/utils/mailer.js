@@ -4,6 +4,12 @@ const createTransporter = () => {
   const port = Number(process.env.SMTP_PORT || 587);
   const secure = process.env.SMTP_SECURE === "true" || port === 465;
 
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    const error = new Error("Password reset email service is not configured");
+    error.code = "MAILER_NOT_CONFIGURED";
+    throw error;
+  }
+
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port,

@@ -15,7 +15,6 @@ import {
   User,
 } from '../../../core/models/models';
 import {
-  deadlineLabel,
   formatCurrency,
   formatDate,
   initialsOf,
@@ -132,11 +131,9 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                   </div>
                   <div class="pl-stat" style="border-left-color: var(--pl-purple)">
                     <span class="pl-stat__value" style="font-size: 1.5rem">
-                      {{ deadlineLabel(project()!.deadline) }}
+                      {{ project()!.durationDays }} days
                     </span>
-                    <span class="pl-stat__label">
-                      Due {{ formatDate(project()!.deadline) }}
-                    </span>
+                    <span class="pl-stat__label">Duration</span>
                   </div>
                   <div class="pl-stat" style="border-left-color: var(--pl-brass)">
                     <span class="pl-stat__value" style="font-size: 1.5rem">
@@ -233,6 +230,7 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                   <pl-submit-proposal
                     [projectId]="project()!._id"
                     [budget]="project()!.budget"
+                    [projectDurationDays]="project()!.durationDays"
                     (submitted)="onProposalSubmitted()"
                   />
                 </div>
@@ -262,7 +260,6 @@ export class ProjectDetails {
   protected readonly user = this.auth.user;
   protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;
-  protected readonly deadlineLabel = deadlineLabel;
   protected readonly initialsOf = initialsOf;
 
   constructor() {

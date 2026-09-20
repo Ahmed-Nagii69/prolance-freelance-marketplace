@@ -161,7 +161,7 @@ interface NextStep {
                   <p class="pl-h2 m-0" style="color: var(--pl-brass)">01</p>
                   <p class="pl-feature__title text-white">Post a clear brief</p>
                   <p class="pl-feature__body" style="color: rgba(245,241,232,.7)">
-                    Clients write a project with budget, deadline and required
+                    Clients write a project with budget, duration and required
                     skills.
                   </p>
                 </div>
@@ -236,7 +236,7 @@ export class Home {
           {
             step: '01',
             title: 'Post a clear brief',
-            detail: 'Scope, budget, deadline and required skills.',
+                    detail: 'Scope, budget, duration and required skills.',
             link: ['/projects/new'],
           },
           {

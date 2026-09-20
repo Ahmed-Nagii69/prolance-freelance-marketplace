@@ -7,31 +7,31 @@ const sendResponse = require("../utils/response");
 
 const createProject = async (req, res, next) => {
   try {
-    const { title, description, budget, deadline, skills } = req.body;
+    const { title, description, budget, durationDays, skills } = req.body;
 
     const cleanTitle = typeof title === "string" ? title.trim() : "";
     const cleanDescription =
       typeof description === "string" ? description.trim() : "";
-    const cleanDeadline = typeof deadline === "string" ? deadline.trim() : "";
     const parsedBudget = Number(budget);
-    const dateValue = new Date(cleanDeadline);
+    const parsedDurationDays = Number(durationDays);
 
     if (
       !cleanTitle ||
       !cleanDescription ||
       budget === undefined ||
       budget === null ||
+      durationDays === undefined ||
+      durationDays === null ||
       (skills !== undefined && (!Array.isArray(skills) || skills.length > 30)) ||
       Number.isNaN(parsedBudget) ||
       parsedBudget <= 0 ||
-      !cleanDeadline ||
-      Number.isNaN(dateValue.getTime()) ||
-      dateValue <= new Date()
+      !Number.isInteger(parsedDurationDays) ||
+      parsedDurationDays < 1
     ) {
       return sendResponse(
         res,
         400,
-        "Title, description, valid budget and valid deadline are required",
+        "Title, description, valid budget and a positive duration in days are required",
         null,
         { code: "VALIDATION_ERROR" },
       );
@@ -41,7 +41,7 @@ const createProject = async (req, res, next) => {
       title: cleanTitle,
       description: cleanDescription,
       budget: parsedBudget,
-      deadline: dateValue,
+      durationDays: parsedDurationDays,
       skills: skills || [],
       client: req.user._id,
     });
@@ -60,25 +60,19 @@ const getProjects = async (req, res, next) => {
       skill,
       minBudget,
       maxBudget,
-      deadlineFrom,
-      deadlineTo,
       sortBy = "createdAt",
       sortOrder = "desc",
       page,
       limit,
     } = req.query;
 
-    const allowedSortFields = ["createdAt", "budget", "deadline", "title"];
+    const allowedSortFields = ["createdAt", "budget", "durationDays", "title"];
     const parsedMinBudget =
       minBudget === undefined ? undefined : Number(minBudget);
     const parsedMaxBudget =
       maxBudget === undefined ? undefined : Number(maxBudget);
     const parsedPage = page === undefined ? 1 : Number(page);
     const parsedLimit = limit === undefined ? 20 : Number(limit);
-    const parsedDeadlineFrom =
-      deadlineFrom === undefined ? undefined : new Date(deadlineFrom);
-    const parsedDeadlineTo =
-      deadlineTo === undefined ? undefined : new Date(deadlineTo);
 
     if (
       (search !== undefined && (typeof search !== "string" || search.length > 200)) ||
@@ -92,12 +86,6 @@ const getProjects = async (req, res, next) => {
       (parsedMinBudget !== undefined &&
         parsedMaxBudget !== undefined &&
         parsedMinBudget > parsedMaxBudget) ||
-      (deadlineFrom !== undefined &&
-        Number.isNaN(parsedDeadlineFrom.getTime())) ||
-      (deadlineTo !== undefined && Number.isNaN(parsedDeadlineTo.getTime())) ||
-      (parsedDeadlineFrom &&
-        parsedDeadlineTo &&
-        parsedDeadlineFrom > parsedDeadlineTo) ||
       !allowedSortFields.includes(sortBy) ||
       !["asc", "desc"].includes(sortOrder) ||
       !Number.isInteger(parsedPage) ||
@@ -132,11 +120,6 @@ const getProjects = async (req, res, next) => {
       filter.budget = {};
       if (minBudget !== undefined) filter.budget.$gte = parsedMinBudget;
       if (maxBudget !== undefined) filter.budget.$lte = parsedMaxBudget;
-    }
-    if (deadlineFrom !== undefined || deadlineTo !== undefined) {
-      filter.deadline = {};
-      if (deadlineFrom !== undefined) filter.deadline.$gte = parsedDeadlineFrom;
-      if (deadlineTo !== undefined) filter.deadline.$lte = parsedDeadlineTo;
     }
 
     const sortDirection = sortOrder === "asc" ? 1 : -1;
@@ -215,13 +198,13 @@ const updateProject = async (req, res, next) => {
       );
     }
 
-    const { title, description, budget, deadline, skills, status } = req.body;
+    const { title, description, budget, durationDays, skills, status } = req.body;
     const cleanTitle = title === undefined ? undefined : String(title).trim();
     const cleanDescription =
       description === undefined ? undefined : String(description).trim();
     const parsedBudget = budget === undefined ? undefined : Number(budget);
-    const parsedDeadline =
-      deadline === undefined ? undefined : new Date(deadline);
+    const parsedDurationDays =
+      durationDays === undefined ? undefined : Number(durationDays);
 
     if (
       (cleanTitle !== undefined && !cleanTitle) ||
@@ -229,8 +212,8 @@ const updateProject = async (req, res, next) => {
       (parsedBudget !== undefined &&
         (!Number.isFinite(parsedBudget) || parsedBudget <= 0)) ||
       (skills !== undefined && (!Array.isArray(skills) || skills.length > 30)) ||
-      (deadline !== undefined &&
-        (Number.isNaN(parsedDeadline.getTime()) || parsedDeadline <= new Date())) ||
+      (durationDays !== undefined &&
+        (!Number.isInteger(parsedDurationDays) || parsedDurationDays < 1)) ||
       status !== undefined
     ) {
       return sendResponse(res, 400, "Invalid project data", null, {
@@ -246,7 +229,9 @@ const updateProject = async (req, res, next) => {
           description: cleanDescription,
         }),
         ...(parsedBudget !== undefined && { budget: parsedBudget }),
-        ...(deadline !== undefined && { deadline: parsedDeadline }),
+        ...(durationDays !== undefined && {
+          durationDays: parsedDurationDays,
+        }),
         ...(skills !== undefined && { skills }),
       },
       { new: true, runValidators: true },

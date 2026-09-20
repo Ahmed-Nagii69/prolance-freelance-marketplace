@@ -19,9 +19,10 @@ const projectSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    deadline: {
-      type: Date,
+    durationDays: {
+      type: Number,
       required: true,
+      min: 1,
     },
     skills: {
       type: [String],

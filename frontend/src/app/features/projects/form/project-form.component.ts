@@ -82,15 +82,15 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
                     </div>
                     <div class="col-12 col-sm-6">
                       <div class="pl-field">
-                        <label class="pl-label-inline" for="pf-deadline">Deadline</label>
+                        <label class="pl-label-inline" for="pf-duration">Duration (days)</label>
                         <input
-                          id="pf-deadline"
-                          type="date"
+                          id="pf-duration"
+                          type="number"
                           class="pl-input"
                           required
-                          [min]="today()"
-                          [(ngModel)]="form.deadline"
-                          name="deadline"
+                          min="1"
+                          [(ngModel)]="form.durationDays"
+                          name="durationDays"
                         />
                       </div>
                     </div>
@@ -151,7 +151,7 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
                 <li>Share relevant constraints and context.</li>
                 <li>Define what done looks like.</li>
                 <li>Choose skills that freelancers search by.</li>
-                <li>Set a realistic deadline and budget.</li>
+                <li>Set a realistic duration and budget.</li>
               </ul>
             </div>
           </div>
@@ -175,19 +175,10 @@ export class ProjectForm {
     title: '',
     description: '',
     budget: null as number | null,
-    deadline: '',
+    durationDays: null as number | null,
   };
   protected skillsCsv = '';
   protected readonly editId = signal('');
-
-  protected readonly today = (): string => {
-    const date = new Date();
-    return [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, '0'),
-      String(date.getDate()).padStart(2, '0'),
-    ].join('-');
-  };
 
   constructor() {
     const url = this.router.url;
@@ -206,7 +197,7 @@ export class ProjectForm {
         this.form.title = project.title;
         this.form.description = project.description;
         this.form.budget = project.budget;
-        this.form.deadline = project.deadline.slice(0, 10);
+        this.form.durationDays = project.durationDays;
         this.skillsCsv = project.skills.join(', ');
         this.loadingProject.set(false);
       },
@@ -218,9 +209,9 @@ export class ProjectForm {
   }
 
   save(): void {
-    const { title, description, budget, deadline } = this.form;
-    if (!title.trim() || !description.trim() || !budget || !deadline) {
-      this.error.set('Title, description, budget and a future deadline are required.');
+    const { title, description, budget, durationDays } = this.form;
+    if (!title.trim() || !description.trim() || !budget || !durationDays || durationDays < 1) {
+      this.error.set('Title, description, budget and a positive duration are required.');
       return;
     }
 
@@ -228,7 +219,7 @@ export class ProjectForm {
       .split(',')
       .map((part) => part.trim().toLowerCase())
       .filter((part) => part.length > 0);
-    const payload = { title, description, budget: Number(budget), deadline, skills };
+    const payload = { title, description, budget: Number(budget), durationDays: Number(durationDays), skills };
 
     this.submitting.set(true);
     this.error.set('');

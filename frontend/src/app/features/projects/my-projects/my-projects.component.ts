@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ProjectService } from '../../../core/services/project.service';
 import { Project } from '../../../core/models/models';
-import { formatCurrency, deadlineLabel } from '../../../core/utils/format';
+import { formatCurrency } from '../../../core/utils/format';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge.component';
 import { LoadingBlock } from '../../../shared/components/loading/loading.component';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state.component';
@@ -51,7 +51,7 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
                     >
                     <div class="pl-card__meta">
                       {{ formatCurrency(project.budget) }} ·
-                      {{ deadlineLabel(project.deadline) }}
+                      {{ project.durationDays }} days
                     </div>
                   </div>
                   <pl-status-badge [status]="project.status" />
@@ -95,7 +95,6 @@ export class MyProjects {
   protected readonly loading = signal(true);
   protected readonly projects = signal<Project[]>([]);
   protected readonly formatCurrency = formatCurrency;
-  protected readonly deadlineLabel = deadlineLabel;
 
   constructor() {
     this.projectService.getMyProjects().subscribe({

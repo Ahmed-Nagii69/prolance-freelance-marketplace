@@ -69,7 +69,7 @@ export interface Project {
   title: string;
   description: string;
   budget: number;
-  deadline: string;
+  durationDays: number;
   skills: string[];
   status: ProjectStatus;
   client: User | string;
@@ -90,7 +90,7 @@ export interface Proposal {
         title?: string;
         description?: string;
         budget?: number;
-        deadline?: string;
+        durationDays?: number;
         status?: ProjectStatus;
         client?: User | string;
       }
@@ -214,6 +214,21 @@ export interface MessageListData {
   pagination: Pagination;
 }
 
+export interface Conversation {
+  project: {
+    _id: string;
+    title: string;
+    status: ProjectStatus;
+    client?: User | string;
+  };
+  other: { name: string; _id: string; profileImage?: string } | null;
+  contractStatus: string | null;
+}
+
+export interface ConversationListData {
+  conversations: Conversation[];
+}
+
 export interface Review {
   _id: string;
   contract: string;
@@ -242,9 +257,7 @@ export type ProjectQuery = {
   skill?: string;
   minBudget?: number;
   maxBudget?: number;
-  deadlineFrom?: string;
-  deadlineTo?: string;
-  sortBy?: 'createdAt' | 'budget' | 'deadline' | 'title';
+  sortBy?: 'createdAt' | 'budget' | 'durationDays' | 'title';
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;

@@ -105,7 +105,7 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
             >
               <option value="createdAt">Newest first</option>
               <option value="budget">Budget</option>
-              <option value="deadline">Deadline</option>
+              <option value="durationDays">Duration</option>
               <option value="title">Title</option>
             </select>
           </div>
@@ -171,9 +171,9 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
                     </div>
                     <div class="pl-stat" style="border-left-color: var(--pl-purple)">
                       <span class="pl-stat__value" style="font-size: 1.4rem">
-                        {{ deadlineLabel(project.deadline) }}
+                        {{ project.durationDays }} days
                       </span>
-                      <span class="pl-stat__label">Deadline</span>
+                      <span class="pl-stat__label">Duration</span>
                     </div>
                   </div>
                 </div>
@@ -275,15 +275,6 @@ export class ProjectsBrowse {
       month: 'short',
       day: 'numeric',
     });
-  }
-
-  deadlineLabel(value: string): string {
-    const days = Math.ceil(
-      (new Date(value).getTime() - Date.now()) / (24 * 60 * 60 * 1000),
-    );
-    if (days < 0) return `Overdue by ${Math.abs(days)}d`;
-    if (days === 0) return 'Due today';
-    return `${days}d left`;
   }
 
   isClient(value: unknown): { name: string } | null {

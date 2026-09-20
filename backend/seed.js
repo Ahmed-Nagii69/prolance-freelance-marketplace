@@ -116,7 +116,7 @@ async function run() {
     description:
       "Rebuild our storefront for speed and conversion. Existing Figma kit and API live, need a clean implementation with SSR for SEO.",
     budget: 8000,
-    deadline: future(30),
+    durationDays: 30,
     skills: ["typescript", "react", "sql"],
     status: "OPEN",
     client: clientAmara._id,
@@ -126,7 +126,7 @@ async function run() {
     description:
       "A real-time portfolio dashboard with price alerts, history charts and exportable reports. Backend endpoints documented.",
     budget: 12000,
-    deadline: future(45),
+    durationDays: 45,
     skills: ["node", "typescript", "react"],
     status: "OPEN",
     client: clientAmara._id,
@@ -136,7 +136,7 @@ async function run() {
     description:
       "Full identity refresh: logo, color, type, packaging guidelines and a launch one-pager for a 12-outlet chain.",
     budget: 3500,
-    deadline: future(21),
+    durationDays: 21,
     skills: ["branding", "ui design", "figma"],
     status: "IN_PROGRESS",
     client: clientArjun._id,
@@ -146,7 +146,7 @@ async function run() {
     description:
       "Twelve long-form articles optimised for our target keywords plus a site-wide meta audit.",
     budget: 1800,
-    deadline: future(14),
+    durationDays: 14,
     skills: ["copywriting", "seo"],
     status: "OPEN",
     client: clientArjun._id,
@@ -156,7 +156,7 @@ async function run() {
     description:
       "Cross-platform app that watches prices on our catalogue and notifies on drops. Needs auth, background sync, tidy UI.",
     budget: 6000,
-    deadline: future(40),
+    durationDays: 40,
     skills: ["javascript", "node"],
     status: "COMPLETED",
     client: clientAmara._id,

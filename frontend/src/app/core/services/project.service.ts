@@ -25,8 +25,6 @@ export class ProjectService {
     setIf('skill', query.skill);
     setIf('minBudget', query.minBudget);
     setIf('maxBudget', query.maxBudget);
-    setIf('deadlineFrom', query.deadlineFrom);
-    setIf('deadlineTo', query.deadlineTo);
     setIf('sortBy', query.sortBy);
     setIf('sortOrder', query.sortOrder);
     setIf('page', query.page ?? 1);
@@ -46,7 +44,7 @@ export class ProjectService {
     title: string;
     description: string;
     budget: number;
-    deadline: string;
+    durationDays: number;
     skills: string[];
   }): Observable<Project> {
     return this.api.post<Project>('/projects', payload);
@@ -58,7 +56,7 @@ export class ProjectService {
       title?: string;
       description?: string;
       budget?: number;
-      deadline?: string;
+      durationDays?: number;
       skills?: string[];
     },
   ): Observable<Project> {

@@ -11,6 +11,7 @@ import {
   ReviewListData,
   Message,
   MessageListData,
+  ConversationListData,
   NotificationListData,
   WalletData,
 } from '../models/models';
@@ -99,6 +100,10 @@ export class ContractService {
 @Injectable({ providedIn: 'root' })
 export class MessageService {
   constructor(private readonly api: ApiService) {}
+
+  getConversations(): Observable<ConversationListData> {
+    return this.api.get<ConversationListData>('/messages/conversations');
+  }
 
   sendMessage(payload: {
     receiver: string;

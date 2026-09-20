@@ -187,6 +187,44 @@ const getProjectMessages = async (req, res, next) => {
   }
 };
 
+const getConversations = async (req, res, next) => {
+  try {
+    if (req.user.role === "ADMIN") {
+      return sendResponse(res, 403, "Administrators cannot view private conversations", null, {
+        code: "FORBIDDEN",
+      });
+    }
+
+    const messages = await Message.find({
+      $or: [{ sender: req.user._id }, { receiver: req.user._id }],
+    })
+      .populate("sender", "name role profileImage")
+      .populate("receiver", "name role profileImage")
+      .populate("project", "title status client")
+      .sort({ createdAt: -1 })
+      .limit(500);
+
+    const conversations = [];
+    const seenProjects = new Set();
+    for (const message of messages) {
+      if (!message.project || seenProjects.has(message.project._id.toString())) {
+        continue;
+      }
+      seenProjects.add(message.project._id.toString());
+      const other = message.sender._id.toString() === req.user._id.toString()
+        ? message.receiver
+        : message.sender;
+      conversations.push({ project: message.project, other, contractStatus: null });
+    }
+
+    return sendResponse(res, 200, "Conversations fetched successfully", {
+      conversations,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const markMessageAsRead = async (req, res, next) => {
   try {
     if (req.user.role === "ADMIN") {
@@ -245,6 +283,7 @@ const getUnreadCount = async (req, res, next) => {
 
 module.exports = {
   sendMessage,
+  getConversations,
   getProjectMessages,
   markMessageAsRead,
   getUnreadCount,

@@ -51,6 +51,16 @@ const createProposal = async (req, res, next) => {
       });
     }
 
+    if (parsedDeliveryTime > projectExists.durationDays) {
+      return sendResponse(
+        res,
+        400,
+        `Delivery time cannot exceed the project duration of ${projectExists.durationDays} days`,
+        null,
+        { code: "VALIDATION_ERROR" },
+      );
+    }
+
     const budgetError = exceedBudgetValidation(
       toCents(parsedPrice),
       toCents(projectExists.budget),
@@ -107,7 +117,7 @@ const getMyProposals = async (req, res, next) => {
     }
     const total = await Proposal.countDocuments(filter);
     const proposals = await Proposal.find(filter)
-      .populate("project", "title description budget deadline status client")
+      .populate("project", "title description budget durationDays status client")
       .sort({ createdAt: -1 })
       .skip((parsedPage - 1) * parsedLimit)
       .limit(parsedLimit);

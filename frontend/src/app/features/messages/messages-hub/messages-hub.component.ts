@@ -1,22 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import {
-  ContractService,
-  ProposalService,
-} from '../../../core/services/resource.services';
-import { AuthService } from '../../../core/services/auth.service';
-import { Contract, Proposal, User } from '../../../core/models/models';
+import { MessageService } from '../../../core/services/resource.services';
+import { Conversation } from '../../../core/models/models';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge.component';
 import { LoadingBlock } from '../../../shared/components/loading/loading.component';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state.component';
-
-interface Conversation {
-  projectId: string;
-  title: string;
-  projectStatus: string;
-  other: { name: string; _id: string; profileImage?: string } | null;
-  contractStatus?: string;
-}
 
 @Component({
   selector: 'pl-messages-hub',
@@ -44,9 +32,9 @@ interface Conversation {
           />
         } @else {
           <div class="d-flex flex-column gap-2">
-            @for (conversation of conversations(); track conversation.projectId) {
+            @for (conversation of conversations(); track conversation.project._id) {
               <a
-                [routerLink]="['/messages/project', conversation.projectId]"
+                [routerLink]="['/messages/project', conversation.project._id]"
                 class="pl-card pl-card--hover"
                 style="text-decoration: none; flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap"
               >
@@ -59,7 +47,7 @@ interface Conversation {
                     }
                   </span>
                   <div>
-                    <p class="mb-0 fw-semibold">{{ conversation.title }}</p>
+                    <p class="mb-0 fw-semibold">{{ conversation.project.title }}</p>
                     <p class="pl-faint mb-0" style="font-size: 0.88rem">
                       with {{ conversation.other?.name ?? '—' }}
                     </p>
@@ -69,7 +57,7 @@ interface Conversation {
                   @if (conversation.contractStatus) {
                     <pl-status-badge [status]="conversation.contractStatus" />
                   } @else {
-                    <pl-status-badge [status]="conversation.projectStatus" />
+                    <pl-status-badge [status]="conversation.project.status" />
                   }
                   <span aria-hidden="true" class="pl-faded-link">→</span>
                 </div>
@@ -82,9 +70,7 @@ interface Conversation {
   `,
 })
 export class MessagesHub {
-  private readonly contractService = inject(ContractService);
-  private readonly proposalService = inject(ProposalService);
-  private readonly auth = inject(AuthService);
+  private readonly messageService = inject(MessageService);
 
   protected readonly loading = signal(true);
   protected readonly conversations = signal<Conversation[]>([]);
@@ -98,84 +84,9 @@ export class MessagesHub {
       .join('') || '?';
 
   constructor() {
-    const me = this.auth.user();
-    if (!me) {
-      this.loading.set(false);
-      return;
-    }
-
-    const map = new Map<string, Conversation>();
-
-    this.contractService.getContracts(1, 100).subscribe({
-      next: (data) => {
-        for (const contract of data.contracts) {
-          const other = this.otherOf(contract.client, contract.freelancer, me);
-          map.set(contract.project._id, {
-            projectId: contract.project._id,
-            title: contract.project.title,
-            projectStatus: contract.project.status,
-            other,
-            contractStatus: contract.status,
-          });
-        }
-      },
-      error: () => void 0,
-    });
-
-    if (me.role === 'FREELANCER') {
-      this.proposalService.getMyProposals(1, 100).subscribe({
-        next: (data) => {
-          for (const proposal of data.proposals) {
-            const projectId = this.projectIdOf(proposal);
-            if (!projectId || map.has(projectId)) continue;
-            map.set(projectId, {
-              projectId,
-              title: this.projectTitleOf(proposal),
-              projectStatus: this.projectStatusOf(proposal),
-              other: null,
-            });
-          }
-          this.finish(map);
-        },
-        error: () => this.finish(map),
-      });
-    } else {
-      this.finish(map);
-    }
-  }
-
-  private finish(map: Map<string, Conversation>): void {
-    this.conversations.set(Array.from(map.values()));
-    this.loading.set(false);
-  }
-
-  private otherOf(
-    client: User,
-    freelancer: User,
-    me: User,
-  ): { name: string; _id: string; profileImage?: string } | null {
-    const other = client._id === me._id ? freelancer : client;
-    return other
-      ? { name: other.name, _id: other._id, profileImage: other.profileImage }
-      : null;
-  }
-
-  private projectIdOf(proposal: Proposal): string {
-    return typeof proposal.project === 'object'
-      ? proposal.project._id
-      : proposal.project;
-  }
-
-  private projectTitleOf(proposal: Proposal): string {
-    return typeof proposal.project === 'object' && proposal.project.title
-      ? proposal.project.title
-      : 'Project';
-  }
-
-  private projectStatusOf(proposal: Proposal): string {
-    return typeof proposal.project === 'object' &&
-      proposal.project.status
-      ? proposal.project.status
-      : '';
+    this.messageService.getConversations().subscribe({
+      next: (data) => this.conversations.set(data.conversations),
+      error: () => this.conversations.set([]),
+    }).add(() => this.loading.set(false));
   }
 }

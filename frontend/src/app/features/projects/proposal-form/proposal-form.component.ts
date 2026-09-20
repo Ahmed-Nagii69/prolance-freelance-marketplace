@@ -68,7 +68,16 @@ import { formatCurrency } from '../../../core/utils/format';
               min="1"
               [(ngModel)]="deliveryTime"
               name="deliveryTime"
+              [attr.max]="projectDurationDays() ?? null"
             />
+            @if (projectDurationDays() !== null) {
+              <p class="pl-field-hint">Client duration: {{ projectDurationDays() }} days</p>
+              @if (durationExceeded()) {
+                <p class="pl-field-hint" style="color: var(--pl-burgundy); font-weight: 600">
+                  Your delivery time cannot exceed the client duration.
+                </p>
+              }
+            }
           </div>
         </div>
       </div>
@@ -99,6 +108,7 @@ export class SubmitProposal {
 
   readonly projectId = input('');
   readonly budget = input<number | null>(null);
+  readonly projectDurationDays = input<number | null>(null);
   readonly submitted = output<void>();
 
   protected readonly coverLetter = signal('');
@@ -118,6 +128,12 @@ export class SubmitProposal {
     return Number.isFinite(value) && value > 0 && value > budget;
   });
 
+  protected readonly durationExceeded = computed(() => {
+    const duration = this.projectDurationDays();
+    const value = Number(this.deliveryTime());
+    return duration !== null && Number.isFinite(value) && value > duration;
+  });
+
   submit(): void {
     if (
       !this.projectId() ||
@@ -131,6 +147,12 @@ export class SubmitProposal {
     if (this.budgetExceeded()) {
       this.error.set(
         `Your bid cannot exceed the project budget of ${formatCurrency(this.budget()!)}.`,
+      );
+      return;
+    }
+    if (this.durationExceeded()) {
+      this.error.set(
+        `Your delivery time cannot exceed the client duration of ${this.projectDurationDays()} days.`,
       );
       return;
     }
