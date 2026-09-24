@@ -865,13 +865,13 @@ The ProLance backend provides **40 active API endpoints**:
 ### 1. Prerequisites
 
 - Node.js (v18 or newer)
-- MongoDB running locally (default: `mongodb://127.0.0.1:27017/prolance`) or via MongoDB Atlas
+- MongoDB Atlas cluster (connection configured via the `MONGODB_URI` environment variable)
 
 ### 2. Environment Variables (`.env`)
 
 ```env
 PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/prolance
+MONGODB_URI=mongodb+srv://<db_user>:<db_password>@cluster-nti.tkvmqnq.mongodb.net/prolance
 JWT_SECRET=supersecretkey12541254
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 SMTP_HOST=smtp.example.com

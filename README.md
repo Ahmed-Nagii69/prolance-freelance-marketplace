@@ -10,7 +10,7 @@ Monorepo with two apps:
 ## Requirements
 
 - Node.js 20+ (tested with 24)
-- MongoDB running locally on `mongodb://127.0.0.1:27017`
+- MongoDB Atlas cluster (`MONGODB_URI` in `backend/.env`, see `backend/.env.example`)
 
 ## Getting started
 
