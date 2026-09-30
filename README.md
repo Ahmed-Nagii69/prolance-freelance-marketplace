@@ -42,8 +42,6 @@ The API base URL lives in `frontend/src/environments/environment.ts` (`apiUrl`).
 
 | Role      | Email                        | Password      |
 | --------- | ---------------------------- | ------------- |
-| Client    | client@prolance.dev          | Password123!  |
-| Freelancer| freelancer@prolance.dev      | Password123!  |
 | Admin     | admin@prolance.dev           | AdminPass123! |
 
 ## Feature overview
