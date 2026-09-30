@@ -4,6 +4,7 @@ import {
   ReviewService,
 } from '../../../core/services/resource.services';
 import { UserService } from '../../../core/services/user.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Review, ReviewListData, User } from '../../../core/models/models';
 import {
   formatDate,
@@ -15,11 +16,21 @@ import { SkillTags } from '../../../shared/components/skill-tags/skill-tags.comp
 import { PaginationControls } from '../../../shared/components/pagination/pagination.component';
 import { LoadingBlock } from '../../../shared/components/loading/loading.component';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state.component';
+import { SaveFreelancerButton } from '../../../shared/components/save-freelancer-button/save-freelancer-button.component';
+import { PortfolioSection } from '../../profile/portfolio-section/portfolio-section.component';
 
 @Component({
   selector: 'pl-user-profile',
   standalone: true,
-  imports: [SkillTags, PaginationControls, LoadingBlock, EmptyState, RatingStars],
+  imports: [
+    SkillTags,
+    PaginationControls,
+    LoadingBlock,
+    EmptyState,
+    RatingStars,
+    PortfolioSection,
+    SaveFreelancerButton,
+  ],
   template: `
     @if (loading()) {
       <div class="pl-container" style="padding-block: 4rem">
@@ -53,6 +64,13 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
               </div>
             </div>
             <div class="ms-auto text-end">
+              @if (canSave()) {
+                <pl-save-freelancer
+                  class="mb-3"
+                  [freelancerId]="user()!._id"
+                  [size]="20"
+                />
+              }
               <div class="pl-rating">
                 <pl-stars [rating]="averageRating()" />
                 <span class="pl-rating__number">
@@ -74,9 +92,15 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
               @if (user()!.bio) {
                 <div class="pl-panel mb-4">
                   <p class="pl-label">About</p>
-                  <p style="line-height: 1.8; color: var(--pl-ink-soft); white-space: pre-line">
+                  <p style="line-height: 1.8; color: var(--pl-ink-soft); white-space: pre-line; overflow-wrap: anywhere">
                     {{ user()!.bio }}
                   </p>
+                </div>
+              }
+
+              @if (user()!.role === 'FREELANCER') {
+                <div class="pl-panel mb-4">
+                  <pl-portfolio-section [freelancerId]="user()!._id" />
                 </div>
               }
 
@@ -135,11 +159,18 @@ export class UserProfile {
   private readonly route = inject(ActivatedRoute);
   private readonly userService = inject(UserService);
   private readonly reviewService = inject(ReviewService);
+  private readonly auth = inject(AuthService);
 
   protected readonly loading = signal(true);
   protected readonly user = signal<User | null>(null);
   protected readonly reviews = signal<Review[]>([]);
   protected readonly pagination = signal<NonNullable<ReviewListData>['pagination'] | null>(null);
+
+  protected readonly canSave = computed(() => {
+    const viewer = this.auth.user();
+    const viewed = this.user();
+    return viewer?.role === 'CLIENT' && viewed?.role === 'FREELANCER';
+  });
 
   protected readonly averageRating = computed(() => {
     const items = this.reviews();

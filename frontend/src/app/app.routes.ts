@@ -11,6 +11,7 @@ import { ProjectForm } from './features/projects/form/project-form.component';
 import { MyProjects } from './features/projects/my-projects/my-projects.component';
 import { ProjectProposals } from './features/projects/project-proposals/project-proposals.component';
 import { MyProposals } from './features/proposals/my-proposals/my-proposals.component';
+import { SavedFreelancers } from './features/saved-freelancers/saved-freelancers.component';
 import { Contracts } from './features/contracts/contracts-list/contracts-list.component';
 import { ContractDetails } from './features/contracts/contract-details/contract-details.component';
 import { MessagesHub } from './features/messages/messages-hub/messages-hub.component';
@@ -19,6 +20,10 @@ import { ProfileHome } from './features/profile/profile-home/profile-home.compon
 import { FreelancerProfilePage } from './features/profile/freelancer-profile/freelancer-profile.component';
 import { UserProfile } from './features/users/user-profile/user-profile.component';
 import { AdminWorkspace } from './features/admin/admin-workspace/admin-workspace.component';
+import { AdminAnalytics } from './features/admin/admin-analytics/admin-analytics.component';
+import { AdminUsers } from './features/admin/admin-users/admin-users.component';
+import { AdminDisputes } from './features/admin/admin-disputes/admin-disputes.component';
+import { MyDashboard } from './features/analytics/my-dashboard/my-dashboard.component';
 
 export const routes: Routes = [
   {
@@ -26,6 +31,11 @@ export const routes: Routes = [
     component: AppShell,
     children: [
       { path: '', component: Home },
+      {
+        path: 'dashboard',
+        component: MyDashboard,
+        canActivate: [authGuard, roleGuard(['CLIENT', 'FREELANCER'])],
+      },
       {
         path: 'auth',
         canActivate: [guestGuard],
@@ -74,6 +84,11 @@ export const routes: Routes = [
         canActivate: [authGuard],
       },
       { path: 'contracts', component: Contracts, canActivate: [authGuard] },
+      {
+        path: 'saved-freelancers',
+        component: SavedFreelancers,
+        canActivate: [authGuard, roleGuard(['CLIENT'])],
+      },
       { path: 'messages', component: MessagesHub, canActivate: [authGuard, roleGuard(['CLIENT', 'FREELANCER'])] },
       {
         path: 'messages/project/:projectId',
@@ -96,8 +111,9 @@ export const routes: Routes = [
         component: AdminWorkspace,
         canActivate: [authGuard, roleGuard(['ADMIN'])],
         children: [
-          { path: '', component: AdminWorkspace, canActivate: [authGuard, roleGuard(['ADMIN'])] },
-          { path: 'users', component: AdminWorkspace, canActivate: [authGuard, roleGuard(['ADMIN'])] },
+          { path: '', component: AdminAnalytics },
+          { path: 'users', component: AdminUsers },
+          { path: 'disputes', component: AdminDisputes },
           { path: '**', redirectTo: '', pathMatch: 'full' },
         ],
       },

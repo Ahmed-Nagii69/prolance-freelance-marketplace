@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { ProjectService } from '../../core/services/project.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Project, User } from '../../core/models/models';
-import { formatCurrency } from '../../core/utils/format';
+import { formatCurrencyRange } from '../../core/utils/format';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge.component';
 import { SkillTags } from '../../shared/components/skill-tags/skill-tags.component';
 import { Spinner } from '../../shared/components/loading/loading.component';
@@ -89,10 +89,16 @@ interface NextStep {
                       <pl-status-badge [status]="project.status" />
                     </div>
                     <div class="pl-card__meta">
-                      {{ formatCurrency(project.budget) }}
+                      {{ formatCurrencyRange(project.minBudget, project.maxBudget) }}
                       @if (clientName(project); as name) {
                         · {{ name }}
                       }
+                    </div>
+                    <div class="pl-stat mb-3" style="border-left-color: var(--pl-petrol)">
+                      <span class="pl-stat__value" style="font-size: 1.4rem">
+                        {{ proposalCount(project) }}
+                      </span>
+                      <span class="pl-stat__label">Proposals</span>
                     </div>
                     <div class="mb-3">
                       <pl-skill-tags [skills]="project.skills.slice(0, 3)" />
@@ -216,10 +222,23 @@ interface NextStep {
             </p>
           </div>
           <div class="d-flex flex-wrap gap-2">
-            <a routerLink="/projects/new" class="pl-btn pl-btn--dark">Post a project</a>
-            <a routerLink="/auth/register" class="pl-btn pl-btn--outline">
-              Create an account
-            </a>
+            @if (canPostProject()) {
+              <a routerLink="/projects/new" class="pl-btn pl-btn--dark">
+                Post a project
+              </a>
+            } @else if (user(); as currentUser) {
+              <a
+                [routerLink]="currentUser.role === 'ADMIN' ? '/admin' : '/projects'"
+                class="pl-btn pl-btn--dark"
+              >
+                {{ currentUser.role === 'ADMIN' ? 'Open admin workspace' : 'Find work' }}
+              </a>
+            }
+            @if (!user()) {
+              <a routerLink="/auth/register" class="pl-btn pl-btn--outline">
+                Create an account
+              </a>
+            }
           </div>
         </div>
       </div>
@@ -231,7 +250,13 @@ export class Home {
   private readonly auth = inject(AuthService);
 
   protected readonly user = computed<User | null>(() => this.auth.user());
-  protected readonly formatCurrency = formatCurrency;
+  protected readonly formatCurrencyRange = formatCurrencyRange;
+
+  // Only a client may post a brief, so nobody else is offered the action.
+  protected readonly canPostProject = computed(() => {
+    const currentUser = this.user();
+    return currentUser === null || currentUser.role === 'CLIENT';
+  });
 
   protected readonly steps = computed<NextStep[]>(() => {
     switch (this.user()?.role) {
@@ -321,5 +346,10 @@ export class Home {
       return project.client.name;
     }
     return '';
+  }
+
+  /** The listing sends this for every project, so a card never has to guess. */
+  proposalCount(project: Project): number {
+    return project.proposalCount ?? 0;
   }
 }

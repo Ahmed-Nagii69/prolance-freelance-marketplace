@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, catchError, tap } from 'rxjs';
 import { ApiService } from './api.service';
-import { AuthData, User } from '../models/models';
+import { AuthData, BanInfo, User } from '../models/models';
 
 const TOKEN_KEY = 'prolance_token';
 const USER_KEY = 'prolance_user';
@@ -11,10 +11,15 @@ const USER_KEY = 'prolance_user';
 export class AuthService {
   private readonly tokenSignal = signal<string | null>(null);
   private readonly userSignal = signal<User | null>(null);
+  private readonly banSignal = signal<BanInfo | null>(null);
 
   readonly user = computed(() => this.userSignal());
   readonly token = computed(() => this.tokenSignal());
   readonly isAuthenticated = computed(() => this.tokenSignal() !== null);
+  // Set only by an ACCOUNT_BANNED response. It survives the session being
+  // cleared so the suspension can be explained instead of failing silently.
+  readonly ban = computed(() => this.banSignal());
+  readonly isBanned = computed(() => this.banSignal() !== null);
 
   constructor(
     private readonly api: ApiService,
@@ -100,8 +105,14 @@ export class AuthService {
   refreshUser(): Observable<User> {
     return this.api.get<User>('/users/profile').pipe(
       tap((user) => this.persistUser(user)),
-      catchError(() => {
-        this.logout();
+      catchError((err) => {
+        // Only an explicit 401 means the session is actually invalid. Network
+        // errors, 500s and other failures must not log the user out.
+        const status = (err as { status?: number })?.status;
+        const code = (err as { error?: { code?: string } })?.error?.code;
+        if (status === 401 || code === 'UNAUTHORIZED') {
+          this.logout();
+        }
         return EMPTY;
       }),
     );
@@ -152,6 +163,28 @@ export class AuthService {
     void this.router.navigate(['/auth/login'], {
       queryParams: { reason: 'session-expired' },
     });
+  }
+
+  /**
+   * Called from the single error interceptor whenever the API answers with
+   * ACCOUNT_BANNED, whether that happens on the login form or on an ordinary
+   * request made by a session that is still open. The local session is dropped
+   * at once so nothing keeps retrying with a token the server will refuse, but
+   * the member is not navigated away: the suspension dialog explains what
+   * happened first.
+   */
+  applyBan(ban: BanInfo): void {
+    this.banSignal.set(ban);
+    this.clearSession();
+  }
+
+  /** Acknowledges the suspension dialog and returns to the login form. */
+  dismissBan(): void {
+    if (this.banSignal() === null) {
+      return;
+    }
+    this.banSignal.set(null);
+    void this.router.navigate(['/auth/login']);
   }
 
   private clearSession(): void {

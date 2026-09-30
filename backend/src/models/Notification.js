@@ -24,6 +24,8 @@ const notificationSchema = new mongoose.Schema(
         "WORK_APPROVED",
         "WORK_REJECTED",
         "PAYMENT_RECEIVED",
+        "DISPUTE_OPENED",
+        "DISPUTE_RESOLVED",
         "MESSAGE",
         "REVIEW",
         "SYSTEM",

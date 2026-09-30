@@ -7,6 +7,8 @@ const {
   updateFreelancerProfile,
   deleteAccount,
   getAllUsers,
+  banUser,
+  unbanUser,
   deleteUserByAdmin,
   getUserById,
   getUserReviews,
@@ -25,6 +27,8 @@ router.get("/freelancer-profile", roleMiddleware("FREELANCER"), getFreelancerPro
 router.put("/freelancer-profile", roleMiddleware("FREELANCER"), updateFreelancerProfile);
 router.delete("/account", deleteAccount);
 router.get("/admin/all", roleMiddleware("ADMIN"), getAllUsers);
+router.post("/admin/:id/ban", roleMiddleware("ADMIN"), banUser);
+router.delete("/admin/:id/ban", roleMiddleware("ADMIN"), unbanUser);
 router.get("/admin/:id", roleMiddleware("ADMIN"), getUserById);
 router.delete("/admin/:id", roleMiddleware("ADMIN"), deleteUserByAdmin);
 router.get("/:id/reviews", getUserReviews);

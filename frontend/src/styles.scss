@@ -81,7 +81,15 @@ a:hover {
   color: var(--pl-ivory);
 }
 
+tabler-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
 .tabler-icon {
+  display: block;
   flex-shrink: 0;
 }
 
@@ -585,6 +593,14 @@ a:hover {
   background-color: rgba(53, 82, 130, 0.08);
 }
 
+/* Deliberately the loudest status: an open dispute freezes real money, so it
+   reads differently from the calm in-progress and pending states. */
+.pl-status--disputed {
+  color: #7a3d12;
+  border-color: rgba(160, 82, 30, 0.45);
+  background-color: rgba(160, 82, 30, 0.12);
+}
+
 /* ------------------------------------------------------------------ */
 /* Tables                                                              */
 /* ------------------------------------------------------------------ */
@@ -1054,6 +1070,204 @@ a:hover {
   font-size: 0.72rem;
   margin-top: 0.1rem;
   flex-shrink: 0;
+}
+
+.pl-usermenu {
+  position: relative;
+}
+
+.pl-header__user--trigger {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--pl-radius-lg);
+  padding: 0.25rem 0.6rem 0.25rem 0.3rem;
+  cursor: pointer;
+  max-width: 12rem;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.pl-header__user--trigger:hover,
+.pl-header__user--trigger:focus-visible {
+  background-color: var(--pl-ivory-soft);
+  border-color: var(--pl-line);
+  outline: none;
+}
+
+.pl-header__user--trigger[aria-expanded='true'] {
+  background-color: var(--pl-ivory-soft);
+  border-color: var(--pl-line);
+}
+
+.pl-header__user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-usermenu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.6rem);
+  width: 232px;
+  max-width: 78vw;
+  background-color: var(--pl-paper);
+  border: 1px solid var(--pl-line);
+  border-radius: var(--pl-radius-lg);
+  box-shadow: 0 16px 40px rgba(23, 21, 18, 0.18);
+  overflow: hidden;
+  z-index: 1100;
+  animation: pl-menu-in 0.16s ease-out;
+}
+
+.pl-usermenu__head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--pl-line);
+  background-color: var(--pl-ivory-soft);
+}
+
+.pl-usermenu__id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pl-usermenu__name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--pl-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-usermenu__role {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pl-ink-faint);
+}
+
+.pl-usermenu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--pl-line);
+  padding: 0.7rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--pl-ink);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.pl-usermenu__item:last-child {
+  border-bottom: none;
+}
+
+.pl-usermenu__item:hover,
+.pl-usermenu__item:focus-visible {
+  background-color: var(--pl-ivory-soft);
+  outline: none;
+}
+
+.pl-usermenu__item--danger {
+  color: var(--pl-burgundy);
+}
+
+@keyframes pl-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-usermenu__panel {
+    animation: none;
+  }
+}
+
+.pl-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--pl-line);
+  border-radius: 50%;
+  background-color: var(--pl-paper);
+  color: var(--pl-ink-soft);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.pl-save-btn:hover:not(:disabled),
+.pl-save-btn:focus-visible {
+  border-color: var(--pl-burgundy);
+  color: var(--pl-burgundy);
+  background-color: var(--pl-ivory-soft);
+  outline: none;
+}
+
+.pl-save-btn.is-saved {
+  color: var(--pl-burgundy);
+  border-color: var(--pl-burgundy);
+}
+
+.pl-save-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.pl-saved__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.pl-audit {
+  margin: 0;
+  padding: 0 0 0 1rem;
+  list-style: none;
+  border-left: 2px solid var(--pl-line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--pl-ink-soft);
+}
+
+.pl-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+  color: var(--pl-ink);
+  cursor: pointer;
+}
+
+.pl-radio input {
+  margin-top: 0.3rem;
+  accent-color: var(--pl-petrol);
 }
 
 .pl-footer {

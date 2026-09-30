@@ -5,7 +5,7 @@ import { TablerIconComponent } from '@tabler/icons-angular';
 import { AuthFrame } from '../auth-frame/auth-frame.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { extractApiMessage } from '../../../core/utils/http-error';
+import { extractApiMessage, extractBanInfo } from '../../../core/utils/http-error';
 
 @Component({
   selector: 'pl-login',
@@ -155,9 +155,14 @@ export class Login {
         void this.router.navigateByUrl(destination);
       },
       error: (err) => {
-        this.error.set(
-          extractApiMessage(err, 'Unable to log in. Please try again.'),
-        );
+        // A suspended account is explained by the global dialog, which the error
+        // interceptor has already raised. Repeating it here as a toast or an
+        // inline message would say the same thing twice.
+        if (!extractBanInfo(err)) {
+          this.error.set(
+            extractApiMessage(err, 'Unable to log in. Please try again.'),
+          );
+        }
         this.submitting.set(false);
       },
     });

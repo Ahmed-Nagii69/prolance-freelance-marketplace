@@ -13,12 +13,13 @@ import {
   roleDisplay,
 } from '../../../core/utils/format';
 import { extractApiMessage } from '../../../core/utils/http-error';
+import { ProfilePhoto } from '../../../shared/components/profile-photo/profile-photo.component';
 import { Role, WalletData } from '../../../core/models/models';
 
 @Component({
   selector: 'pl-profile-home',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, ProfilePhoto],
   template: `
     <div class="pl-page-title">
       <div class="pl-container">
@@ -150,55 +151,7 @@ import { Role, WalletData } from '../../../core/models/models';
                 </div>
                 <div class="pl-field">
                   <label class="pl-label-inline">Profile photo</label>
-                  <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
-                    @if (profileImage()) {
-                      <img [src]="profileImage()" class="pl-avatar pl-avatar--xl" alt="" />
-                    } @else {
-                      <span class="pl-avatar pl-avatar--xl">{{ initialsOf(name()) }}</span>
-                    }
-                    <div class="d-flex flex-column gap-2 align-items-start">
-                      <button
-                        type="button"
-                        class="pl-btn pl-btn--dark pl-btn--sm"
-                        (click)="photoInput.click()"
-                        [disabled]="photoUploading()"
-                      >
-                        {{ photoUploading() ? 'Uploading…' : 'Choose photo' }}
-                      </button>
-                      @if (profileImage()) {
-                        <button
-                          type="button"
-                          class="pl-btn pl-btn--danger pl-btn--sm"
-                          (click)="removePhoto()"
-                        >
-                          Remove photo
-                        </button>
-                      }
-                    </div>
-                    <input
-                      #photoInput
-                      class="d-none"
-                      type="file"
-                      accept="image/*"
-                      (change)="onPhotoSelected($event)"
-                    />
-                  </div>
-                  @if (photoError(); as message) {
-                    <div class="pl-message" style="color: var(--pl-burgundy)" role="alert">
-                      {{ message }}
-                    </div>
-                  }
-                </div>
-                <div class="pl-field">
-                  <label class="pl-label-inline" for="pp-skills">Skills (comma separated, lowercase)</label>
-                  <input
-                    id="pp-skills"
-                    type="text"
-                    class="pl-input"
-                    [(ngModel)]="skillsCsv"
-                    name="skills"
-                    placeholder="typescript, ui design, node"
-                  />
+                  <pl-profile-photo (imageChange)="profileImage.set($event)" />
                 </div>
                 @if (profileError(); as message) {
                   <div class="pl-message mb-3" style="color: var(--pl-burgundy)" role="alert">
@@ -296,11 +249,8 @@ export class ProfileHome {
 
   protected readonly name = signal('');
   protected readonly profileImage = signal('');
-  protected readonly skillsCsv = signal('');
   protected readonly profileSaving = signal(false);
   protected readonly profileError = signal('');
-  protected readonly photoUploading = signal(false);
-  protected readonly photoError = signal('');
 
   protected readonly currentPassword = signal('');
   protected readonly newPassword = signal('');
@@ -378,7 +328,6 @@ export class ProfileHome {
     if (!current) return;
     this.name.set(current.name);
     this.profileImage.set(current.profileImage);
-    this.skillsCsv.set(current.skills.join(', '));
   }
 
   saveProfile(): void {
@@ -390,10 +339,6 @@ export class ProfileHome {
     const payload = {
       name,
       profileImage: this.profileImage(),
-      skills: this.skillsCsv()
-        .split(',')
-        .map((part) => part.trim().toLowerCase())
-        .filter((part) => part.length > 0),
     };
     this.profileSaving.set(true);
     this.profileError.set('');
@@ -406,49 +351,6 @@ export class ProfileHome {
       error: (err) => {
         this.profileError.set(extractApiMessage(err, 'Unable to save your profile.'));
         this.profileSaving.set(false);
-      },
-    });
-  }
-
-  onPhotoSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      this.photoError.set('Please choose an image file.');
-      return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-      this.photoError.set('Image must be 3 MB or smaller.');
-      return;
-    }
-    this.photoError.set('');
-    this.photoUploading.set(true);
-    this.userService.uploadProfilePhoto(file).subscribe({
-      next: (user) => {
-        this.auth.adoptUser(user);
-        this.profileImage.set(user.profileImage);
-        this.photoUploading.set(false);
-        this.toast.success('Profile photo updated.');
-      },
-      error: (err) => {
-        this.photoError.set(extractApiMessage(err, 'Unable to upload your photo.'));
-        this.photoUploading.set(false);
-      },
-    });
-  }
-
-  removePhoto(): void {
-    this.photoError.set('');
-    this.userService.updateProfile({ profileImage: '' }).subscribe({
-      next: (user) => {
-        this.auth.adoptUser(user);
-        this.profileImage.set('');
-        this.toast.success('Profile photo removed.');
-      },
-      error: (err) => {
-        this.photoError.set(extractApiMessage(err, 'Unable to remove your photo.'));
       },
     });
   }

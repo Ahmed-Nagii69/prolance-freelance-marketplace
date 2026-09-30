@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ProposalService } from '../../../core/services/resource.services';
 import { ProjectService } from '../../../core/services/project.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
@@ -25,6 +25,10 @@ import { extractApiMessage } from '../../../core/utils/http-error';
           Review applicants and accept the proposal you want to work with.
           Accepting creates a contract and closes the project.
         </p>
+        <p class="pl-faint mt-2 mb-0" style="font-size: 0.9rem">
+          Open a freelancer's profile to see their skills and portfolio before
+          you decide.
+        </p>
       </div>
     </div>
 
@@ -32,38 +36,48 @@ import { extractApiMessage } from '../../../core/utils/http-error';
       <div class="pl-container">
         @if (loading()) {
           <pl-loading />
-        } @else if (proposals().length === 0) {
-          <pl-empty-state
-            title="No proposals yet"
-            body="When freelancers apply, their proposals will appear here with their price, timeline and cover letter."
-          />
         } @else {
-          <div class="d-flex flex-column gap-3">
-            @for (proposal of proposals(); track proposal._id) {
-              <div class="pl-panel">
-                <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
-                  <div class="d-flex align-items-start gap-3">
-                    <span class="pl-avatar pl-avatar--lg">
-                      @if (freelancerPhoto(proposal)) {
-                        <img [src]="freelancerPhoto(proposal)" alt="" />
-                      } @else {
-                        {{ initialsOf(freelancerName(proposal)) }}
-                      }
-                    </span>
-                    <div>
-                      <p class="mb-0 fw-semibold">{{ freelancerName(proposal) }}</p>
-                      <p class="pl-faint mb-0" style="font-size: 0.9rem">
-                        {{ proposal.deliveryTime }} day delivery
-                      </p>
+          @if (proposals().length === 0) {
+            <pl-empty-state
+              title="No proposals yet"
+              body="When freelancers apply, their proposals will appear here with their price, timeline and cover letter."
+            />
+          } @else {
+            <div class="d-flex flex-column gap-3">
+              @for (proposal of proposals(); track proposal._id) {
+                <div class="pl-panel">
+                  <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                    <div class="d-flex align-items-start gap-3">
+                      <span class="pl-avatar pl-avatar--lg">
+                        @if (freelancerPhoto(proposal)) {
+                          <img [src]="freelancerPhoto(proposal)" alt="" />
+                        } @else {
+                          {{ initialsOf(freelancerName(proposal)) }}
+                        }
+                      </span>
+                      <div>
+                        <p class="mb-0 fw-semibold">
+                          {{ freelancerName(proposal) }}
+                        </p>
+                        <p class="pl-faint mb-0" style="font-size: 0.9rem">
+                          {{ proposal.deliveryTime }} day delivery
+                        </p>
+                        @if (freelancerId(proposal); as freelancerId) {
+                          <a
+                            [routerLink]="['/users', freelancerId]"
+                            class="pl-faded-link"
+                            style="font-size: 0.85rem"
+                            >View profile →</a>
+                        }
+                      </div>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between justify-content-md-end gap-3">
+                      <span class="pl-h3 m-0" style="color: var(--pl-petrol)">
+                        {{ formatCurrency(proposal.price) }}
+                      </span>
+                      <pl-status-badge [status]="proposal.status" />
                     </div>
                   </div>
-                  <div class="d-flex align-items-center justify-content-between justify-content-md-end gap-3">
-                    <span class="pl-h3 m-0" style="color: var(--pl-petrol)">
-                      {{ formatCurrency(proposal.price) }}
-                    </span>
-                    <pl-status-badge [status]="proposal.status" />
-                  </div>
-                </div>
 
                 <p class="mt-3 mb-2" style="color: var(--pl-ink-soft); line-height: 1.7">
                   {{ proposal.coverLetter }}
@@ -91,13 +105,14 @@ import { extractApiMessage } from '../../../core/utils/http-error';
             }
           </div>
         }
+        }
       </div>
     </section>
   `,
+  styles: [``],
 })
 export class ProjectProposals {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly proposalService = inject(ProposalService);
   private readonly projectService = inject(ProjectService);
   private readonly confirm = inject(ConfirmService);
@@ -117,13 +132,20 @@ export class ProjectProposals {
       error: () => void 0,
     });
 
-    this.proposalService.getProjectProposals(projectId, 1, 100).subscribe({
-      next: (data) => {
-        this.proposals.set(data.proposals);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.load();
+  }
+
+  private load(): void {
+    const projectId = this.route.snapshot.paramMap.get('id') ?? '';
+    this.proposalService
+      .getProjectProposals(projectId, 1, 100)
+      .subscribe({
+        next: (data) => {
+          this.proposals.set(data.proposals);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
   }
 
   freelancerName(proposal: Proposal): string {
@@ -138,6 +160,14 @@ export class ProjectProposals {
     const freelancer = proposal.freelancer;
     if (typeof freelancer === 'object' && freelancer !== null) {
       return (freelancer as User).profileImage || '';
+    }
+    return '';
+  }
+
+  freelancerId(proposal: Proposal): string {
+    const freelancer = proposal.freelancer;
+    if (typeof freelancer === 'object' && freelancer !== null) {
+      return (freelancer as User)._id || '';
     }
     return '';
   }
@@ -180,14 +210,7 @@ export class ProjectProposals {
   }
 
   private reload(): void {
-    const projectId = this.route.snapshot.paramMap.get('id') ?? '';
     this.loading.set(true);
-    this.proposalService.getProjectProposals(projectId, 1, 100).subscribe({
-      next: (data) => {
-        this.proposals.set(data.proposals);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.load();
   }
 }

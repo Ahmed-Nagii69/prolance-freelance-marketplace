@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ObjectId } = mongoose.Schema.Types;
 
 const userSchema = new mongoose.Schema(
   {
@@ -64,8 +65,35 @@ const userSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
+    // Moderation. A ban is always an explicit admin action; resolving a dispute
+    // never sets it. `bannedUntil` of null means permanent, otherwise the ban
+    // lapses on its own once that moment passes.
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
+    banReason: {
+      type: String,
+      default: "",
+      maxlength: 500,
+    },
+    bannedAt: {
+      type: Date,
+      default: null,
+    },
+    bannedUntil: {
+      type: Date,
+      default: null,
+    },
+    bannedBy: {
+      type: ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true },
 );
+
+userSchema.index({ isBanned: 1, bannedUntil: 1 });
 
 module.exports = mongoose.model("User", userSchema);

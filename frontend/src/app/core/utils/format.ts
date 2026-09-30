@@ -22,7 +22,26 @@ export const formatCurrency = (value: number): string =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export const formatDate = (value: string | Date | undefined): string => {
+/**
+ * Renders a project budget as a range. A project whose two bounds are equal (or
+ * where only one bound reached the client) reads as a single figure, so a
+ * one-number range is never shown as a redundant "500 - 500".
+ */
+export const formatCurrencyRange = (
+  min: number | null | undefined,
+  max: number | null | undefined,
+): string => {
+  const hasMin = typeof min === 'number' && Number.isFinite(min);
+  const hasMax = typeof max === 'number' && Number.isFinite(max);
+  if (hasMin && hasMax) {
+    return min === max ? formatCurrency(min) : `${formatCurrency(min)} – ${formatCurrency(max)}`;
+  }
+  if (hasMax) return `Up to ${formatCurrency(max)}`;
+  if (hasMin) return `From ${formatCurrency(min)}`;
+  return '—';
+};
+
+export const formatDate = (value: string | Date | null | undefined): string => {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
@@ -33,7 +52,7 @@ export const formatDate = (value: string | Date | undefined): string => {
   });
 };
 
-export const formatDateTime = (value: string | Date | undefined): string => {
+export const formatDateTime = (value: string | Date | null | undefined): string => {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
@@ -46,14 +65,14 @@ export const formatDateTime = (value: string | Date | undefined): string => {
   });
 };
 
-export const daysUntil = (value: string | Date | undefined): number | null => {
+export const daysUntil = (value: string | Date | null | undefined): number | null => {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return Math.ceil((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 };
 
-export const deadlineLabel = (value: string | Date | undefined): string => {
+export const deadlineLabel = (value: string | Date | null | undefined): string => {
   const days = daysUntil(value);
   if (days === null) return '—';
   if (days < 0) return `Overdue by ${Math.abs(days)}d`;
@@ -68,7 +87,7 @@ export const humanizeStatus = (status: string): string =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 
-export const timeAgo = (value: string | Date | undefined): string => {
+export const timeAgo = (value: string | Date | null | undefined): string => {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -84,6 +103,35 @@ export const timeAgo = (value: string | Date | undefined): string => {
 
 export const roleDisplay = (role: Role): string =>
   role.charAt(0) + role.slice(1).toLowerCase();
+
+/**
+ * A short, human description of how long a suspension still has to run, for the
+ * dialog a suspended member sees. Returns null for a permanent ban or an
+ * unparseable date, so the caller can decide not to show an expiry at all.
+ */
+export const banWindowLabel = (bannedUntil: string | null): string | null => {
+  if (!bannedUntil) {
+    return null;
+  }
+  const end = new Date(bannedUntil);
+  if (Number.isNaN(end.getTime())) {
+    return null;
+  }
+
+  const remainingMs = end.getTime() - Date.now();
+  if (remainingMs <= 0) {
+    return 'the suspension has just ended';
+  }
+
+  const totalHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+  if (totalHours < 24) {
+    const hours = Math.max(1, totalHours);
+    return hours === 1 ? 'for about 1 more hour' : `for about ${hours} more hours`;
+  }
+
+  const days = Math.ceil(totalHours / 24);
+  return days === 1 ? 'for about 1 more day' : `for about ${days} more days`;
+};
 
 export const greeting = (name: string): string => {
   const hour = new Date().getHours();

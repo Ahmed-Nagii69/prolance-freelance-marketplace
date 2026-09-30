@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
-import { FreelancerProfile, User, UserListData } from '../models/models';
+import { BanInfo, FreelancerProfile, User, UserListData } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -51,6 +51,24 @@ export class UserService {
 
   getAdminUser(id: string): Observable<User> {
     return this.api.get<User>(`/users/admin/${id}`);
+  }
+
+  /**
+   * Suspends an account. The server is the only place a ban is created, and it
+   * is never a side effect: it has to be asked for explicitly, by an admin.
+   */
+  banUser(id: string, durationDays: number, reason: string): Observable<{
+    user: User;
+    ban: BanInfo;
+  }> {
+    return this.api.post<{ user: User; ban: BanInfo }>(
+      `/users/admin/${id}/ban`,
+      { durationDays, reason },
+    );
+  }
+
+  unbanUser(id: string): Observable<{ user: User }> {
+    return this.api.delete<{ user: User }>(`/users/admin/${id}/ban`);
   }
 
   deleteUserByAdmin(id: string): Observable<null> {

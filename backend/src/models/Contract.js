@@ -38,7 +38,7 @@ const contractSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["ACTIVE", "WORK_SUBMITTED", "COMPLETED", "CANCELLED"],
+      enum: ["ACTIVE", "WORK_SUBMITTED", "DISPUTED", "COMPLETED", "CANCELLED"],
       default: "ACTIVE",
     },
     workSubmission: {
@@ -70,6 +70,22 @@ const contractSchema = new mongoose.Schema(
     paymentReleased: {
       type: Boolean,
       default: false,
+    },
+    platformFeePercent: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    platformFeeAmount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    freelancerNetAmount: {
+      type: Number,
+      min: 0,
+      default: 0,
     },
   },
   { timestamps: true },

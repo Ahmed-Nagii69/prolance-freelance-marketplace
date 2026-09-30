@@ -125,7 +125,8 @@ async function run() {
     title: "E-commerce storefront rebuild",
     description:
       "Rebuild our storefront for speed and conversion. Existing Figma kit and API live, need a clean implementation with SSR for SEO.",
-    budget: 8000,
+    minBudget: 7000,
+    maxBudget: 9000,
     durationDays: 30,
     skills: ["typescript", "react", "sql"],
     status: "OPEN",
@@ -135,7 +136,8 @@ async function run() {
     title: "Crypto portfolio dashboard",
     description:
       "A real-time portfolio dashboard with price alerts, history charts and exportable reports. Backend endpoints documented.",
-    budget: 12000,
+    minBudget: 10000,
+    maxBudget: 13000,
     durationDays: 45,
     skills: ["node", "typescript", "react"],
     status: "OPEN",
@@ -145,7 +147,8 @@ async function run() {
     title: "Brand identity for coffee chain",
     description:
       "Full identity refresh: logo, color, type, packaging guidelines and a launch one-pager for a 12-outlet chain.",
-    budget: 3500,
+    minBudget: 3000,
+    maxBudget: 4000,
     durationDays: 21,
     skills: ["branding", "ui design", "figma"],
     status: "IN_PROGRESS",
@@ -155,7 +158,8 @@ async function run() {
     title: "Launch SEO content package",
     description:
       "Twelve long-form articles optimised for our target keywords plus a site-wide meta audit.",
-    budget: 1800,
+    minBudget: 1500,
+    maxBudget: 2200,
     durationDays: 14,
     skills: ["copywriting", "seo"],
     status: "OPEN",
@@ -165,7 +169,8 @@ async function run() {
     title: "Mobile price tracker app",
     description:
       "Cross-platform app that watches prices on our catalogue and notifies on drops. Needs auth, background sync, tidy UI.",
-    budget: 6000,
+    minBudget: 5000,
+    maxBudget: 6500,
     durationDays: 40,
     skills: ["javascript", "node"],
     status: "COMPLETED",
@@ -293,15 +298,6 @@ async function run() {
 
   console.log("Seeding transactions ...");
   await Transaction.create([
-    {
-      user: freDana._id,
-      type: "CREDIT",
-      amount: propDanaTracker.price,
-      balanceAfter: 5900,
-      contract: contractTracker._id,
-      project: pTracker._id,
-      description: "Payment received for completed contract",
-    },
     {
       user: clientAmara._id,
       type: "DEBIT",

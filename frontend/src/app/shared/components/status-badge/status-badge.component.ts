@@ -13,16 +13,22 @@ export class StatusBadge {
 
   protected readonly statusClass = computed(() => {
     const status = this.status().toLowerCase();
+    // Checked before the wider matches below: "under review" is a dispute that
+    // an admin is working through and already reads as in-progress, while a
+    // bare "disputed" is the state the project and the contract sit in.
+    if (status.includes('disputed')) {
+      return 'pl-status--disputed';
+    }
     if (status.includes('open') || status.includes('active')) {
       return 'pl-status--open';
     }
-    if (status.includes('progress')) {
+    if (status.includes('progress') || status.includes('review')) {
       return 'pl-status--in-progress';
     }
     if (status.includes('submitted')) {
       return 'pl-status--submitted';
     }
-    if (status.includes('completed')) {
+    if (status.includes('completed') || status.includes('resolved')) {
       return 'pl-status--completed';
     }
     if (status.includes('cancelled') || status.includes('rejected')) {

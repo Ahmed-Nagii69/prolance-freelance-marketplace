@@ -3,6 +3,7 @@ import { HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import {
+  Dispute,
   Project,
   ProjectListData,
   ProjectQuery,
@@ -36,6 +37,15 @@ export class ProjectService {
     return this.api.get<Project>(`/projects/${id}`);
   }
 
+  /**
+   * The dispute attached to a project. The server refuses this for anyone who
+   * is not a party to it, so a project that is merely marked as disputed still
+   * says nothing about the argument behind it to other visitors.
+   */
+  getProjectDispute(id: string): Observable<{ dispute: Dispute | null }> {
+    return this.api.get<{ dispute: Dispute | null }>(`/projects/${id}/dispute`);
+  }
+
   getMyProjects(): Observable<Project[]> {
     return this.api.get<Project[]>('/projects/my');
   }
@@ -43,7 +53,8 @@ export class ProjectService {
   createProject(payload: {
     title: string;
     description: string;
-    budget: number;
+    minBudget: number;
+    maxBudget: number;
     durationDays: number;
     skills: string[];
   }): Observable<Project> {
@@ -55,7 +66,8 @@ export class ProjectService {
     payload: {
       title?: string;
       description?: string;
-      budget?: number;
+      minBudget?: number;
+      maxBudget?: number;
       durationDays?: number;
       skills?: string[];
     },

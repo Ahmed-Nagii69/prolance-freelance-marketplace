@@ -7,11 +7,14 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { TablerIconComponent } from '@tabler/icons-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/resource.services';
 import { MessageService } from '../../core/services/resource.services';
+import { SavedFreelancerService } from '../../core/services/resource.services';
 import { initialsOf, roleDisplay, timeAgo } from '../../core/utils/format';
 import { Notification, User } from '../../core/models/models';
 
@@ -136,30 +139,119 @@ import { Notification, User } from '../../core/models/models';
                 }
               </div>
 
-              <a routerLink="/profile" class="pl-header__user">
-                <span class="pl-avatar">
-                  @if (currentUser.profileImage) {
-                    <img [src]="currentUser.profileImage" alt="" />
-                  } @else {
-                    {{ initialsOf(currentUser.name) }}
+              @if (currentUser.role === 'CLIENT') {
+                <a
+                  routerLink="/saved-freelancers"
+                  class="pl-icon-btn"
+                  aria-label="Saved freelancers"
+                  title="Saved freelancers"
+                >
+                  <tabler-icon icon="heart" [size]="20" />
+                  @if (savedCount() > 0) {
+                    <span class="pl-badge-dot pl-badge-dot--bell">
+                      {{ savedCount() > 99 ? '99+' : savedCount() }}
+                    </span>
                   }
-                </span>
-                <span class="d-none d-md-inline">
-                  {{
-                    currentUser.role === 'ADMIN'
-                      ? 'Admin'
-                      : roleDisplay(currentUser.role)
-                  }}
-                </span>
-              </a>
-              <button
-                type="button"
-                class="pl-btn pl-btn--outline pl-btn--sm"
-                (click)="logout()"
-                aria-label="Log out"
-              >
-                Log out
-              </button>
+                </a>
+              }
+
+              @if (currentUser.role === 'ADMIN') {
+                <a routerLink="/profile" class="pl-header__user">
+                  <span class="pl-avatar">
+                    @if (currentUser.profileImage) {
+                      <img [src]="currentUser.profileImage" alt="" />
+                    } @else {
+                      {{ initialsOf(currentUser.name) }}
+                    }
+                  </span>
+                  <span class="d-none d-md-inline">Admin</span>
+                </a>
+                <button
+                  type="button"
+                  class="pl-btn pl-btn--outline pl-btn--sm"
+                  (click)="logout()"
+                  aria-label="Log out"
+                >
+                  Log out
+                </button>
+              } @else {
+                <div class="pl-usermenu">
+                  <button
+                    type="button"
+                    class="pl-header__user pl-header__user--trigger"
+                    (click)="toggleUserMenu()"
+                    [attr.aria-expanded]="userMenuOpen()"
+                    aria-haspopup="menu"
+                    aria-label="Account menu"
+                  >
+                    <span class="pl-avatar">
+                      @if (currentUser.profileImage) {
+                        <img [src]="currentUser.profileImage" alt="" />
+                      } @else {
+                        {{ initialsOf(currentUser.name) }}
+                      }
+                    </span>
+                    <span class="d-none d-md-inline pl-header__user-name">
+                      {{ currentUser.name }}
+                    </span>
+                    <tabler-icon
+                      class="d-none d-md-inline"
+                      icon="chevron-down"
+                      [size]="16"
+                    />
+                  </button>
+
+                  @if (userMenuOpen()) {
+                    <div class="pl-usermenu__panel" role="menu">
+                      <div class="pl-usermenu__head">
+                        <span class="pl-avatar">
+                          @if (currentUser.profileImage) {
+                            <img [src]="currentUser.profileImage" alt="" />
+                          } @else {
+                            {{ initialsOf(currentUser.name) }}
+                          }
+                        </span>
+                        <span class="pl-usermenu__id">
+                          <span class="pl-usermenu__name">
+                            {{ currentUser.name }}
+                          </span>
+                          <span class="pl-usermenu__role">
+                            {{ roleDisplay(currentUser.role) }}
+                          </span>
+                        </span>
+                      </div>
+
+                      <a
+                        routerLink="/profile"
+                        class="pl-usermenu__item"
+                        role="menuitem"
+                        (click)="closeUserMenu()"
+                      >
+                        <tabler-icon icon="user" [size]="18" />
+                        Profile
+                      </a>
+                      <a
+                        routerLink="/dashboard"
+                        class="pl-usermenu__item"
+                        role="menuitem"
+                        (click)="closeUserMenu()"
+                      >
+                        <tabler-icon icon="dashboard" [size]="18" />
+                        Dashboard
+                      </a>
+                      <button
+                        type="button"
+                        class="pl-usermenu__item pl-usermenu__item--danger"
+                        role="menuitem"
+                        (click)="logout()"
+                      >
+                        <tabler-icon icon="logout" [size]="18" />
+                        Log out
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
             } @else {
               <a routerLink="/auth/login" class="pl-btn pl-btn--outline pl-btn--sm">
                 Log in
@@ -189,12 +281,15 @@ export class Header implements OnDestroy {
   private readonly router = inject(Router);
   private readonly notificationsService = inject(NotificationService);
   private readonly messagesService = inject(MessageService);
+  private readonly savedService = inject(SavedFreelancerService);
 
   readonly user = computed<User | null>(() => this.auth.user());
   readonly notifications = signal<Notification[]>([]);
   readonly msgUnread = signal(0);
   readonly notifUnread = signal(0);
+  readonly savedCount = signal(0);
   protected readonly notifOpen = signal(false);
+  protected readonly userMenuOpen = signal(false);
   protected readonly initialsOf = initialsOf;
   protected readonly roleDisplay = roleDisplay;
   protected readonly timeAgo = timeAgo;
@@ -212,11 +307,22 @@ export class Header implements OnDestroy {
         this.notifications.set([]);
         this.msgUnread.set(0);
         this.notifUnread.set(0);
+        this.savedCount.set(0);
         this.notifOpen.set(false);
+        this.userMenuOpen.set(false);
       }
     });
 
     this.refreshTimer = setInterval(() => this.loadBadges(), 30000);
+
+    // Saving or removing a freelancer happens on other pages, so the badge is
+    // refreshed on every navigation to stay in sync.
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.loadSavedCount());
   }
 
   ngOnDestroy(): void {
@@ -230,6 +336,27 @@ export class Header implements OnDestroy {
     if (this.notifOpen() && !(event.target as HTMLElement)?.closest('.pl-notif')) {
       this.notifOpen.set(false);
     }
+    if (
+      this.userMenuOpen() &&
+      !(event.target as HTMLElement)?.closest('.pl-usermenu')
+    ) {
+      this.userMenuOpen.set(false);
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.notifOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((value) => !value);
+    this.notifOpen.set(false);
+  }
+
+  closeUserMenu(): void {
+    this.userMenuOpen.set(false);
   }
 
   toggleMenu(): void {
@@ -237,11 +364,14 @@ export class Header implements OnDestroy {
   }
 
   logout(): void {
+    this.userMenuOpen.set(false);
+    this.notifOpen.set(false);
     this.auth.logout();
   }
 
   openNotifications(): void {
     this.notifOpen.update((value) => !value);
+    this.userMenuOpen.set(false);
     if (this.notifOpen()) {
       this.loadNotifications();
     }
@@ -278,6 +408,7 @@ export class Header implements OnDestroy {
     if (!currentUser) {
       this.msgUnread.set(0);
       this.notifUnread.set(0);
+      this.savedCount.set(0);
       return;
     }
     this.notificationsService.getUnreadCount().subscribe({
@@ -292,6 +423,22 @@ export class Header implements OnDestroy {
     } else {
       this.msgUnread.set(0);
     }
+    if (currentUser.role === 'CLIENT') {
+      this.loadSavedCount();
+    } else {
+      this.savedCount.set(0);
+    }
+  }
+
+  private loadSavedCount(): void {
+    if (this.user()?.role !== 'CLIENT') {
+      this.savedCount.set(0);
+      return;
+    }
+    this.savedService.getSavedCount().subscribe({
+      next: (data) => this.savedCount.set(data.count),
+      error: () => void 0,
+    });
   }
 
   private loadNotifications(): void {

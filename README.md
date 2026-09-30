@@ -24,6 +24,18 @@ npm run seed           # optional: destructive demo data
 npm start              # http://127.0.0.1:5000
 ```
 
+To start from an empty database instead of demo data, drop every collection and
+keep only the admin account:
+
+```bash
+npm run reset-db             # prints the target cluster and refuses to run
+npm run reset-db -- --yes    # drops everything, then prints the new admin password
+```
+
+The admin password is generated per run unless you set `ADMIN_PASSWORD` (with
+`ADMIN_EMAIL` and `ADMIN_NAME` also honoured) before running it. `npm run reset-db`
+is irreversible — point `MONGODB_URI` at a throwaway database if you are unsure.
+
 The API exposes `GET /health` and mounts routes under `/api/*`. All endpoints respond with the envelope `{ success, message, data, error? }`; authenticated routes expect a `Bearer` JWT.
 
 ### Frontend

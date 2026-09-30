@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthFrame } from '../auth-frame/auth-frame.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { extractApiMessage } from '../../../core/utils/http-error';
+import { extractApiMessage, extractBanInfo } from '../../../core/utils/http-error';
 
 type Step = 'email' | 'otp' | 'password';
 
@@ -225,7 +225,13 @@ export class ForgotPassword {
           });
         },
         error: (err) => {
-          this.error.set(extractApiMessage(err, 'Unable to reset your password.'));
+          // A suspended account is reported by the global dialog instead, so a
+          // password reset cannot be used to quietly obtain a session.
+          if (!extractBanInfo(err)) {
+            this.error.set(
+              extractApiMessage(err, 'Unable to reset your password.'),
+            );
+          }
           this.submitting.set(false);
         },
       });

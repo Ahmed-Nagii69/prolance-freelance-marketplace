@@ -1,21 +1,24 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { TablerIconComponent } from '@tabler/icons-angular';
 import { ProjectService } from '../../../core/services/project.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { DisputeNoticeService } from '../../../core/services/dispute-notice.service';
 import {
   ContractService,
   ProposalService,
 } from '../../../core/services/resource.services';
 import {
   Contract,
+  Dispute,
   Project,
   Proposal,
   User,
 } from '../../../core/models/models';
 import {
-  formatCurrency,
+  formatCurrencyRange,
   formatDate,
   initialsOf,
 } from '../../../core/utils/format';
@@ -31,6 +34,7 @@ import { extractApiMessage } from '../../../core/utils/http-error';
   standalone: true,
   imports: [
     RouterLink,
+    TablerIconComponent,
     StatusBadge,
     SkillTags,
     LoadingBlock,
@@ -69,11 +73,46 @@ import { extractApiMessage } from '../../../core/utils/http-error';
 
       <section class="pl-section pl-section--tight">
         <div class="pl-container">
+          @if (disputeNotice(); as notice) {
+            <div
+              class="d-flex align-items-start gap-3 mb-4"
+              role="status"
+              style="
+                padding: 1rem 1.15rem;
+                border: 1px solid rgba(160, 82, 30, 0.35);
+                border-left: 4px solid #a0521e;
+                border-radius: var(--pl-radius);
+                background-color: rgba(160, 82, 30, 0.07);
+                color: var(--pl-ink);
+              "
+            >
+              <tabler-icon icon="scale" [size]="20" />
+              <div>
+                <p class="mb-1 fw-semibold">
+                  {{
+                    notice.status === 'UNDER_REVIEW'
+                      ? 'This project is under dispute review'
+                      : 'This project is under dispute'
+                  }}
+                </p>
+                <p class="mb-0" style="font-size: 0.92rem">
+                  {{ notice.raisedByName }} opened a dispute: {{ notice.reason }}.
+                  A ProLance admin decides how the held payment is settled, so
+                  nothing can be submitted, approved or cancelled in the meantime.
+                  @if (notice.contractId) {
+                    <a [routerLink]="['/contracts', notice.contractId]"
+                      >Read the case file</a
+                    >.
+                  }
+                </p>
+              </div>
+            </div>
+          }
           <div class="row g-4">
             <div class="col-12 col-lg-8">
               <div class="pl-panel mb-4">
                 <p class="pl-label mb-2">The brief</p>
-                <p style="white-space: pre-line; line-height: 1.8">
+                <p style="white-space: pre-line; line-height: 1.8; overflow-wrap: anywhere">
                   {{ project()!.description }}
                 </p>
               </div>
@@ -98,9 +137,6 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                     </span>
                     <div>
                       <p class="mb-0 fw-semibold">{{ client.name }}</p>
-                      <p class="pl-faint mb-0" style="font-size: 0.9rem">
-                        {{ client.email }}
-                      </p>
                     </div>
                     <a
                       [routerLink]="['/users', client._id]"
@@ -116,7 +152,11 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                   [routerLink]="['/projects', project()!._id, 'proposals']"
                   class="pl-btn pl-btn--dark"
                 >
-                  View proposals for this project
+                  @if (proposalCount() === 1) {
+                    View the 1 proposal for this project
+                  } @else {
+                    View the {{ proposalCount() }} proposals for this project
+                  }
                 </a>
               }
             </div>
@@ -126,8 +166,8 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                 <p class="pl-label">Terms</p>
                 <div class="d-flex flex-column gap-3 mt-1">
                   <div class="pl-stat">
-                    <span class="pl-stat__value">{{ formatCurrency(project()!.budget) }}</span>
-                    <span class="pl-stat__label">Budget</span>
+                    <span class="pl-stat__value">{{ formatCurrencyRange(project()!.minBudget, project()!.maxBudget) }}</span>
+                    <span class="pl-stat__label">Budget range</span>
                   </div>
                   <div class="pl-stat" style="border-left-color: var(--pl-purple)">
                     <span class="pl-stat__value" style="font-size: 1.5rem">
@@ -182,13 +222,34 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                     </div>
                   } @else if (currentUser.role === 'FREELANCER') {
                     @if (project()!.status === 'OPEN') {
-                      @if (myProposal()) {
+                      @if (myProposal(); as mine) {
                         <div class="pl-message">
                           You already submitted a proposal for this project.
                           Its status is
-                          <strong>{{ myProposal()!.status.replace('_', ' ') }}</strong
+                          <strong>{{ mine.status.replace('_', ' ') }}</strong
                           >.
                         </div>
+                        @if (canEditMyProposal()) {
+                          <button
+                            type="button"
+                            class="pl-btn pl-btn--accent w-100 mt-3"
+                            (click)="editingMyProposal.set(!editingMyProposal())"
+                          >
+                            {{
+                              editingMyProposal()
+                                ? 'Close the editor'
+                                : 'Edit your proposal'
+                            }}
+                          </button>
+                        } @else {
+                          <p class="pl-field-hint mt-2 mb-0">
+                            {{
+                              isProposalEdited(mine)
+                                ? 'You already used your one edit on this proposal.'
+                                : 'This proposal can no longer be edited.'
+                            }}
+                          </p>
+                        }
                       } @else {
                         <div class="pl-message">
                           This project is open for proposals — use the form
@@ -224,14 +285,37 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                     Submit a proposal
                   </h2>
                   <p class="pl-faint mb-3" style="font-size: 0.9rem">
-                    Bids are accepted up to the project budget of
-                    {{ formatCurrency(project()!.budget) }}.
+                    Bids are accepted between
+                    {{ formatCurrencyRange(project()!.minBudget, project()!.maxBudget) }}.
                   </p>
                   <pl-submit-proposal
                     [projectId]="project()!._id"
-                    [budget]="project()!.budget"
                     [projectDurationDays]="project()!.durationDays"
                     (submitted)="onProposalSubmitted()"
+                  />
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (editingMyProposal() && myProposal(); as mine) {
+            <div class="row mt-4">
+              <div class="col-12">
+                <div class="pl-panel">
+                  <p class="pl-kicker mb-1">Revise</p>
+                  <h2 class="pl-headline mb-1" style="font-size: 1.8rem">
+                    Edit your proposal
+                  </h2>
+                  <p class="pl-faint mb-3" style="font-size: 0.9rem">
+                    You can revise a submitted bid once. Saving here uses that
+                    single edit.
+                  </p>
+                  <pl-submit-proposal
+                    [proposal]="mine"
+                    [projectId]="project()!._id"
+                    [projectDurationDays]="project()!.durationDays"
+                    (saved)="onMyProposalSaved($event)"
+                    (cancelled)="editingMyProposal.set(false)"
                   />
                 </div>
               </div>
@@ -251,14 +335,17 @@ export class ProjectDetails {
   private readonly auth = inject(AuthService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
+  private readonly disputeNoticeDialog = inject(DisputeNoticeService);
 
   protected readonly loading = signal(true);
   protected readonly project = signal<Project | null>(null);
   protected readonly myProposal = signal<Proposal | null>(null);
+  protected readonly editingMyProposal = signal(false);
   protected readonly contracts = signal<Contract[]>([]);
+  protected readonly dispute = signal<Dispute | null>(null);
 
   protected readonly user = this.auth.user;
-  protected readonly formatCurrency = formatCurrency;
+  protected readonly formatCurrencyRange = formatCurrencyRange;
   protected readonly formatDate = formatDate;
   protected readonly initialsOf = initialsOf;
 
@@ -273,11 +360,45 @@ export class ProjectDetails {
         this.project.set(project);
         this.loading.set(false);
         this.loadSecondary(project);
+        this.loadDispute(project);
       },
       error: () => {
         this.loading.set(false);
         void this.router.navigate(['/projects']);
       },
+    });
+  }
+
+  /**
+   * A project that is not disputed makes no request here. When it is, the
+   * server decides whether this viewer is one of the two parties, so a visitor
+   * who is not involved simply gets nothing back and sees only the status
+   * badge.
+   */
+  private loadDispute(project: Project): void {
+    if (project.status !== 'DISPUTED' || !this.auth.user()) {
+      return;
+    }
+
+    this.projectService.getProjectDispute(project._id).subscribe({
+      next: ({ dispute }) => {
+        if (!dispute) return;
+        this.dispute.set(dispute);
+        // Opened once, on arrival. The banner above stays on the page afterwards,
+        // so closing the dialog never hides the state it reported.
+        this.disputeNoticeDialog.open({
+          projectTitle: project.title,
+          status: dispute.status === 'UNDER_REVIEW' ? 'UNDER_REVIEW' : 'OPEN',
+          reason: dispute.reason,
+          raisedByName: this.partyName(dispute.raisedBy),
+          openedAt: dispute.createdAt,
+          contractId:
+            typeof dispute.contract === 'string'
+              ? dispute.contract
+              : (dispute.contract?._id ?? null),
+        });
+      },
+      error: () => void 0,
     });
   }
 
@@ -310,6 +431,7 @@ export class ProjectDetails {
   }
 
   onProposalSubmitted(): void {
+    this.editingMyProposal.set(false);
     this.proposalService.getMyProposals(1, 100).subscribe({
       next: (data) => {
         const found = data.proposals.find(
@@ -324,12 +446,11 @@ export class ProjectDetails {
     });
   }
 
-  clientPanel(): { name: string; email: string; _id: string; profileImage?: string } | null {
+  clientPanel(): { name: string; _id: string; profileImage?: string } | null {
     const client = this.project()?.client;
     if (typeof client === 'object' && client !== null && '_id' in client) {
       return {
         name: client.name,
-        email: client.email,
         _id: client._id,
         profileImage: client.profileImage,
       };
@@ -356,6 +477,14 @@ export class ProjectDetails {
     );
   }
 
+  /**
+   * Only the owning client receives a count, so this is never shown to anyone
+   * who has no right to see the competing bids.
+   */
+  proposalCount(): number {
+    return this.project()?.proposalCount ?? 0;
+  }
+
   canSubmitProposal(): boolean {
     const currentUser = this.auth.user();
     return (
@@ -363,6 +492,27 @@ export class ProjectDetails {
       this.project()?.status === 'OPEN' &&
       !this.myProposal()
     );
+  }
+
+  // A bid is revisable exactly once, and only while it is still pending on an
+  // open project. The server enforces the same rules.
+  canEditMyProposal(): boolean {
+    const proposal = this.myProposal();
+    return (
+      !!proposal &&
+      proposal.status === 'PENDING' &&
+      (proposal.editCount ?? 0) < 1 &&
+      this.project()?.status === 'OPEN'
+    );
+  }
+
+  isProposalEdited(proposal: Proposal): boolean {
+    return (proposal.editCount ?? 0) >= 1;
+  }
+
+  onMyProposalSaved(updated: Proposal): void {
+    this.editingMyProposal.set(false);
+    this.myProposal.set(updated);
   }
 
   callsToAction(): {
@@ -382,10 +532,42 @@ export class ProjectDetails {
     const canMessage = isOwner || this.contracts().length > 0;
 
     return {
-      edit: isOwner,
-      delete: isOwner,
+      edit: isOwner && project.status === 'OPEN',
+      // Deleting would take the contract, the case file and its history with
+      // it, so it stays out of reach for as long as the dispute is running.
+      delete: isOwner && project.status !== 'DISPUTED',
       messages: canMessage,
     };
+  }
+
+  /**
+   * The subset of the dispute the page can safely describe: who opened it, why,
+   * and where to read the rest. Null for a project nobody in dispute.
+   */
+  disputeNotice(): {
+    status: 'OPEN' | 'UNDER_REVIEW';
+    reason: string;
+    raisedByName: string;
+    contractId: string | null;
+  } | null {
+    const dispute = this.dispute();
+    if (!dispute) return null;
+    return {
+      status: dispute.status === 'UNDER_REVIEW' ? 'UNDER_REVIEW' : 'OPEN',
+      reason: dispute.reason,
+      raisedByName: this.partyName(dispute.raisedBy),
+      contractId:
+        typeof dispute.contract === 'string'
+          ? dispute.contract
+          : (dispute.contract?._id ?? null),
+    };
+  }
+
+  private partyName(value: Dispute['raisedBy']): string {
+    if (typeof value === 'string') {
+      return 'A party';
+    }
+    return value?.name ?? 'A party';
   }
 
   deleteProject(): void {

@@ -1,17 +1,20 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { TablerIconComponent } from '@tabler/icons-angular';
 import {
   ContractService,
+  DisputeService,
 } from '../../../core/services/resource.services';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Contract, User } from '../../../core/models/models';
+import { Contract, Dispute, User } from '../../../core/models/models';
 import {
   formatCurrency,
   formatDate,
   formatDateTime,
+  humanizeStatus,
   initialsOf,
 } from '../../../core/utils/format';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge.component';
@@ -23,7 +26,7 @@ import { extractApiMessage } from '../../../core/utils/http-error';
 @Component({
   selector: 'pl-contract-details',
   standalone: true,
-  imports: [RouterLink, FormsModule, StatusBadge, EmptyState, LoadingBlock, ReviewPanel],
+  imports: [RouterLink, FormsModule, TablerIconComponent, StatusBadge, EmptyState, LoadingBlock, ReviewPanel],
   template: `
     @if (loading()) {
       <div class="pl-container" style="padding-block: 4rem">
@@ -118,7 +121,7 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                         style="background: var(--pl-ivory-soft); padding: 1rem"
                       >
                         <p
-                          style="white-space: pre-line; line-height: 1.8; color: var(--pl-ink-soft); margin: 0"
+                          style="white-space: pre-line; line-height: 1.8; color: var(--pl-ink-soft); margin: 0; overflow-wrap: anywhere"
                         >
                           {{ sub.description }}
                         </p>
@@ -180,6 +183,12 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                         Work has been submitted and is awaiting approval from
                         the client.
                       </div>
+                    } @else if (contract()!.status === 'DISPUTED') {
+                      <div class="pl-message mt-3">
+                        This contract is frozen while the dispute is settled, so
+                        the work cannot be approved or returned here. A ProLance
+                        admin decides the outcome.
+                      </div>
                     }
                   }
                 </div>
@@ -237,6 +246,162 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                 </div>
               }
 
+              @if (disputePanel(); as panel) {
+                <div class="pl-panel mb-4">
+                  <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                    <p class="pl-label mb-0">Dispute</p>
+                    @if (panel.dispute; as dispute) {
+                      <pl-status-badge [status]="dispute.status" />
+                    }
+                  </div>
+
+                    @if (panel.dispute; as dispute) {
+                      <div class="mt-3">
+                        <p class="fw-semibold mb-1">{{ dispute.reason }}</p>
+                        <p class="pl-faint mb-0" style="font-size: 0.85rem">
+                          Opened by {{ partyName(dispute.raisedBy) }} on
+                          {{ formatDateTime(dispute.createdAt) }}
+                        </p>
+                        <p
+                          class="mt-2 mb-0"
+                          style="white-space: pre-line; line-height: 1.7; color: var(--pl-ink-soft); overflow-wrap: anywhere"
+                        >
+                          {{ dispute.description }}
+                        </p>
+
+                        @if (dispute.status === 'OPEN' || dispute.status === 'UNDER_REVIEW') {
+                          <div class="pl-message mt-3">
+                            The held payment is frozen
+                            {{ dispute.status === 'OPEN' ? 'while the dispute is open' : 'while the dispute is under review' }}.
+                            A ProLance admin decides how it is settled.
+                          </div>
+                        }
+
+                        @if (dispute.status === 'RESOLVED' || dispute.status === 'REJECTED') {
+                          <div
+                            class="pl-panel mt-3"
+                            style="background: var(--pl-ivory-soft); padding: 1rem"
+                          >
+                            <p class="pl-label mb-2">Admin decision</p>
+                            <p class="mb-1">
+                              <strong>Outcome:</strong>
+                              {{ dispute.resolution.outcome ? outcomeLabel(dispute.resolution.outcome) : 'No payment change' }}
+                            </p>
+                            @if (dispute.resolution.amountToFreelancer > 0) {
+                              <p class="mb-1 pl-faint" style="font-size: 0.88rem">
+                                {{ formatCurrency(dispute.resolution.amountToFreelancer) }} to the freelancer
+                              </p>
+                            }
+                            @if (dispute.resolution.amountToClient > 0) {
+                              <p class="mb-1 pl-faint" style="font-size: 0.88rem">
+                                {{ formatCurrency(dispute.resolution.amountToClient) }} refunded to the client
+                              </p>
+                            }
+                            @if (dispute.resolution.note) {
+                              <p
+                                class="mb-1 mt-2"
+                                style="white-space: pre-line; line-height: 1.7; color: var(--pl-ink-soft); overflow-wrap: anywhere"
+                              >
+                                {{ dispute.resolution.note }}
+                              </p>
+                            }
+                            @if (dispute.resolution.resolvedAt) {
+                              <p class="pl-faint mb-0 mt-2" style="font-size: 0.85rem">
+                                Decided on {{ formatDateTime(dispute.resolution.resolvedAt) }}
+                              </p>
+                            }
+                          </div>
+                        }
+
+                        @if (dispute.statusHistory.length > 0) {
+                          <ul class="pl-audit mt-3">
+                            @for (entry of dispute.statusHistory; track $index) {
+                              <li>
+                                <strong>{{ humanizeStatus(entry.status) }}</strong>
+                                @if (entry.note) {
+                                  — {{ entry.note }}
+                                }
+                                <span class="pl-faint"> · {{ formatDateTime(entry.at) }}</span>
+                              </li>
+                            }
+                          </ul>
+                        }
+                      </div>
+                    } @else {
+                      <p class="pl-muted mt-3 mb-3">
+                        If something went wrong on either side, open a dispute. A
+                        ProLance admin reviews the contract and decides how the
+                        held payment is settled.
+                      </p>
+
+                      @if (disputeFormOpen()) {
+                        <form (ngSubmit)="submitDispute()" novalidate>
+                          <div class="pl-field">
+                            <label class="pl-label-inline" for="dispute-reason">
+                              Reason
+                            </label>
+                            <input
+                              id="dispute-reason"
+                              class="pl-input"
+                              maxlength="120"
+                              [(ngModel)]="disputeReason"
+                              name="reason"
+                              placeholder="A short summary, e.g. Work not delivered as agreed"
+                            />
+                          </div>
+                          <div class="pl-field">
+                            <label class="pl-label-inline" for="dispute-description">
+                              What happened?
+                            </label>
+                            <textarea
+                              id="dispute-description"
+                              class="pl-textarea"
+                              maxlength="4000"
+                              [(ngModel)]="disputeDescription"
+                              name="description"
+                              placeholder="Describe the problem, what was agreed, and what went wrong."
+                            ></textarea>
+                          </div>
+                          @if (disputeError(); as message) {
+                            <div
+                              class="pl-message mb-3"
+                              style="color: var(--pl-burgundy)"
+                              role="alert"
+                            >
+                              {{ message }}
+                            </div>
+                          }
+                          <div class="d-flex flex-wrap gap-2">
+                            <button
+                              type="submit"
+                              class="pl-btn pl-btn--danger"
+                              [disabled]="disputeSubmitting()"
+                            >
+                              {{ disputeSubmitting() ? 'Sending…' : 'Submit dispute' }}
+                            </button>
+                            <button
+                              type="button"
+                              class="pl-btn pl-btn--outline"
+                              (click)="disputeFormOpen.set(false)"
+                            >
+                              Keep working
+                            </button>
+                          </div>
+                        </form>
+                      } @else {
+                        <button
+                          type="button"
+                          class="pl-btn pl-btn--danger"
+                          (click)="disputeFormOpen.set(true)"
+                        >
+                          <tabler-icon icon="alert-triangle" [size]="18" />
+                          Report a dispute
+                        </button>
+                      }
+                    }
+                  </div>
+              }
+
               @if (contract()!.status === 'COMPLETED') {
                 <div class="pl-panel">
                   <p class="pl-label mb-2">Leave a review</p>
@@ -262,11 +427,13 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                         {{ formatCurrency(contract()!.agreedPrice) }}
                       </span>
                       <span class="pl-stat__label">Payment released</span>
-                    } @else if (contract()!.status === 'ACTIVE' || contract()!.status === 'WORK_SUBMITTED') {
+                    } @else if (contract()!.status === 'ACTIVE' || contract()!.status === 'WORK_SUBMITTED' || contract()!.status === 'DISPUTED') {
                       <span class="pl-stat__value" style="font-size: 1.5rem">
                         {{ formatCurrency(contract()!.heldAmount ?? 0) }}
                       </span>
-                      <span class="pl-stat__label">Held in escrow</span>
+                      <span class="pl-stat__label">
+                        {{ disputeActive() ? 'Frozen in dispute' : 'Held in escrow' }}
+                      </span>
                     } @else {
                       <span class="pl-stat__value" style="font-size: 1.5rem">—</span>
                       <span class="pl-stat__label">Payment</span>
@@ -303,22 +470,31 @@ export class ContractDetails {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly contractService = inject(ContractService);
+  private readonly disputeService = inject(DisputeService);
   private readonly auth = inject(AuthService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
 
   protected readonly loading = signal(true);
   protected readonly contract = signal<Contract | null>(null);
+  protected readonly dispute = signal<Dispute | null>(null);
   protected readonly user = this.auth.user;
   protected readonly formatCurrency = formatCurrency;
   protected readonly formatDate = formatDate;
   protected readonly formatDateTime = formatDateTime;
+  protected readonly humanizeStatus = humanizeStatus;
   protected readonly initialsOf = initialsOf;
 
   protected readonly workDescription = signal('');
   protected readonly rejectReason = signal('');
   protected readonly workSubmitting = signal(false);
   protected readonly workError = signal('');
+
+  protected readonly disputeFormOpen = signal(false);
+  protected readonly disputeReason = signal('');
+  protected readonly disputeDescription = signal('');
+  protected readonly disputeSubmitting = signal(false);
+  protected readonly disputeError = signal('');
 
   constructor() {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -330,11 +506,19 @@ export class ContractDetails {
       next: (contract) => {
         this.contract.set(contract);
         this.loading.set(false);
+        this.fetchDispute(id);
       },
       error: () => {
         this.loading.set(false);
         void this.router.navigate(['/contracts']);
       },
+    });
+  }
+
+  private fetchDispute(id: string): void {
+    this.disputeService.getContractDispute(id).subscribe({
+      next: (data) => this.dispute.set(data.dispute),
+      error: () => this.dispute.set(null),
     });
   }
 
@@ -361,8 +545,12 @@ export class ContractDetails {
     if (contract.status === 'WORK_SUBMITTED' && isClient) {
       return { mode: 'review' };
     }
+    // Read-only. A dispute takes away the submit and review panels, but the
+    // submission and the feedback stay on the page: they are what both sides and
+    // the admin are being asked to look at.
     if (
       contract.status === 'WORK_SUBMITTED' ||
+      contract.status === 'DISPUTED' ||
       (contract.status === 'COMPLETED' && contract.workSubmission?.description)
     ) {
       return { mode: 'info' };
@@ -375,6 +563,91 @@ export class ContractDetails {
     return sub?.description ? sub : null;
   }
 
+  isParticipant(): boolean {
+    const me = this.user();
+    const contract = this.contract();
+    if (!me || !contract || me.role === 'ADMIN') return false;
+    return contract.client._id === me._id || contract.freelancer._id === me._id;
+  }
+
+  disputeActive(): boolean {
+    const status = this.dispute()?.status;
+    return status === 'OPEN' || status === 'UNDER_REVIEW';
+  }
+
+  disputePanel(): { dispute: Dispute | null } | null {
+    const contract = this.contract();
+    if (!contract || !this.isParticipant()) return null;
+
+    const dispute = this.dispute();
+    if (dispute) {
+      return { dispute };
+    }
+
+    const canOpen =
+      !contract.paymentReleased &&
+      (contract.heldAmount ?? 0) > 0 &&
+      (contract.status === 'ACTIVE' || contract.status === 'WORK_SUBMITTED');
+
+    return canOpen ? { dispute: null } : null;
+  }
+
+  partyName(value: Dispute['raisedBy'] | Dispute['against']): string {
+    if (typeof value === 'string') {
+      return 'A party';
+    }
+    return value?.name ?? 'A party';
+  }
+
+  outcomeLabel(outcome: Dispute['resolution']['outcome']): string {
+    if (outcome === 'RELEASE') return 'Released to the freelancer';
+    if (outcome === 'REFUND') return 'Refunded to the client';
+    if (outcome === 'SPLIT') return 'Split between both parties';
+    return 'No payment change';
+  }
+
+  submitDispute(): void {
+    const contract = this.contract();
+    if (!contract) return;
+
+    const reason = this.disputeReason().trim();
+    const description = this.disputeDescription().trim();
+    if (!reason || !description) {
+      this.disputeError.set('Add a short reason and describe what happened.');
+      return;
+    }
+
+    this.disputeSubmitting.set(true);
+    this.disputeError.set('');
+    this.disputeService.openDispute(contract._id, reason, description).subscribe({
+      next: () => {
+        this.toast.success(
+          'Dispute submitted. The contract is frozen until an admin settles it.',
+        );
+        this.disputeSubmitting.set(false);
+        this.disputeFormOpen.set(false);
+        this.disputeReason.set('');
+        this.disputeDescription.set('');
+        this.fetch(contract._id);
+      },
+      error: (err) => {
+        this.disputeError.set(
+          extractApiMessage(err, 'Unable to open the dispute.'),
+        );
+        this.disputeSubmitting.set(false);
+      },
+    });
+  }
+
+  /**
+   * A contract is only ever completed by the client approving submitted work, so
+   * there is deliberately no "mark as complete" action here. The available
+   * actions are the delivery flow itself: submit, approve, reject, cancel.
+   *
+   * A dispute takes every one of those away, because the admin is the one who
+   * settles the money. Messaging deliberately stays open: the two sides are
+   * still expected to talk to each other while the case is being reviewed.
+   */
   actions(): { cancel: boolean; messages: boolean } | null {
     const contract = this.contract();
     if (!contract) return null;
@@ -382,7 +655,9 @@ export class ContractDetails {
     const participant = Boolean(me && me.role !== 'ADMIN');
     return {
       cancel: participant && contract.status === 'ACTIVE',
-      messages: participant && contract.status === 'ACTIVE',
+      messages:
+        participant &&
+        (contract.status === 'ACTIVE' || contract.status === 'DISPUTED'),
     };
   }
 

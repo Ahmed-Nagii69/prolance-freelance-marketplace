@@ -124,7 +124,7 @@ Skills are stored as **freeform strings** on `User`, `FreelancerProfile`, and `P
 
 ### 6. Project Creation & Discovery
 
-A client creates a project via `POST /api/projects`, specifying title, description, budget, future deadline, and required skills. Freelancers browse and filter open projects using `GET /api/projects` by searching keywords, specifying budget ranges, deadlines, or filtering by required skills.
+A client creates a project via `POST /api/projects`, specifying title, description, a budget range, future deadline, and required skills. Freelancers browse and filter open projects using `GET /api/projects` by searching keywords, specifying budget ranges, deadlines, or filtering by required skills.
 
 ### 7. Proposal Submission
 
@@ -146,7 +146,7 @@ While a project is active (or has active proposals/contracts), the project clien
 
 ### 10. Contract Completion & Reviews
 
-Once work is delivered, either participant can mark the contract as completed via `PATCH /api/contracts/:id/complete`. This marks the contract and project as `COMPLETED`, enabling both parties to submit a verified review via `POST /api/reviews` (1–5 rating plus written comment). A unique index enforces that each participant can submit only one review per contract.
+Once work is delivered, the client approves it via `PATCH /api/contracts/:id/approve-work`, which settles payment and marks both the contract and the project as `COMPLETED`, enabling both parties to submit a verified review via `POST /api/reviews` (1–5 rating plus written comment). A unique index enforces that each participant can submit only one review per contract.
 
 ### 11. Data Movement Pipeline
 
@@ -198,12 +198,13 @@ Work published by clients seeking freelancer bids.
 
 - `title` (String, required, maxlength 160, trimmed)
 - `description` (String, required, maxlength 5000, trimmed)
-- `budget` (Number, required, min 0)
+- `minBudget` (Number, required, min 0)
+- `maxBudget` (Number, required, min 0 — must be `>= minBudget`)
 - `deadline` (Date, required — must be in the future)
 - `skills` (Array of Strings, max 30 items)
 - `status` (String, enum: `["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"]`, default `"OPEN"`)
 - `client` (ObjectId ref `User`, required)
-- Indexes: `{ client: 1, createdAt: -1 }`, `{ status: 1, createdAt: -1 }`
+- Indexes: `{ client: 1, createdAt: -1 }`, `{ status: 1, createdAt: -1 }`, `{ minBudget: 1, maxBudget: 1 }`
 - Timestamps: `createdAt`, `updatedAt`
 
 ### 4. Proposal (`src/models/Proposal.js`)
@@ -477,7 +478,7 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 
 - **Purpose:** Browses projects with search, filtering, sorting, and pagination.
 - **Authentication:** Not required (Public).
-- **Query Parameters:** `search`, `status`, `skill`, `minBudget`, `maxBudget`, `deadlineFrom`, `deadlineTo`, `sortBy` (`createdAt`, `budget`, `deadline`, `title`), `sortOrder` (`asc`, `desc`), `page` (default 1), `limit` (default 20, max 100).
+- **Query Parameters:** `search`, `status`, `skill`, `minBudget`, `maxBudget`, `deadlineFrom`, `deadlineTo`, `sortBy` (`createdAt`, `minBudget`, `maxBudget`, `budget` (alias for `minBudget`), `deadline`, `title`), `sortOrder` (`asc`, `desc`), `page` (default 1), `limit` (default 20, max 100). `minBudget`/`maxBudget` filters match any project whose stored budget range overlaps the requested window.
 - **Response:** HTTP `200` with `projects` array and `pagination` object.
 - **Errors:** `VALIDATION_ERROR` (400).
 
@@ -513,7 +514,8 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 - **Request Body:**
   - `title` (String, required, max 160 chars)
   - `description` (String, required, max 5000 chars)
-  - `budget` (Number, required, > 0)
+  - `minBudget` (Number, required, > 0)
+  - `maxBudget` (Number, required, > 0 and `>= minBudget`)
   - `deadline` (Date String, required, must be in future)
   - `skills` (Array of Strings, optional, max 30)
 - **Response:** HTTP `201` with created project object (`status: "OPEN"`).
@@ -524,7 +526,7 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 - **Purpose:** Updates an owned project.
 - **Authentication:** Required.
 - **Role:** `CLIENT` (must be project owner).
-- **Request Body:** Optional fields: `title`, `description`, `budget`, `deadline`, `skills`. (Direct status modifications are rejected).
+- **Request Body:** Optional fields: `title`, `description`, `minBudget`, `maxBudget`, `deadline`, `skills`. Either budget bound may be sent on its own; the omitted bound keeps its stored value, and the pair is validated for ordering. (Direct status modifications are rejected).
 - **Response:** HTTP `200` with updated project object.
 - **Errors:** `FORBIDDEN` (403), `PROJECT_NOT_FOUND` (404), `VALIDATION_ERROR` (400).
 
@@ -628,11 +630,11 @@ Errors return `success: false`, `data: null`, and an `error: { code: "ERROR_CODE
 
 #### PATCH /api/contracts/:id/complete
 
-- **Purpose:** Marks an active contract as completed.
-- **Authentication:** Required (must be contract client or freelancer).
-- **What happens:** Verifies contract status is `ACTIVE`. Sets contract and project statuses to `COMPLETED`.
-- **Response:** HTTP `200` with updated contract object.
-- **Errors:** `FORBIDDEN` (403), `CONTRACT_NOT_FOUND` (404), `CONTRACT_NOT_ACTIVE` (409).
+- **Removed.** A contract now only reaches `COMPLETED` through the delivery flow
+  (`PATCH /api/contracts/:id/approve-work`, client-only, on a `WORK_SUBMITTED`
+  contract) or through admin dispute resolution. There is no generic
+  "mark as complete" endpoint, so held funds can never be released without a
+  submission the client has accepted.
 
 #### PATCH /api/contracts/:id/cancel
 
@@ -761,7 +763,7 @@ const roleMiddleware = (...roles) => {
   - `GET /api/users/:id`, `GET /api/users/:id/reviews`
   - `GET /api/proposals/:id` (participant check)
   - `GET /api/contracts`, `GET /api/contracts/:id` (participant check)
-  - `PATCH /api/contracts/:id/complete`, `PATCH /api/contracts/:id/cancel` (participant check)
+  - `PATCH /api/contracts/:id/cancel` (participant check)
   - `POST /api/reviews`, `GET /api/reviews/user/:id`
   - `POST /api/messages`, `GET /api/messages/project/:projectId`, `PATCH /api/messages/:id/read` (participant check; `ADMIN` explicitly forbidden)
 - **Client Role Only (`roleMiddleware("CLIENT")`):**
@@ -850,7 +852,7 @@ The ProLance backend provides **40 active API endpoints**:
 | `PATCH`  | `/api/proposals/:id/reject`          | Required       | Client      | Reject a pending proposal                              |
 | `GET`    | `/api/contracts`                     | Required       | Participant | List contracts involving current user                  |
 | `GET`    | `/api/contracts/:id`                 | Required       | Participant | View contract details                                  |
-| `PATCH`  | `/api/contracts/:id/complete`        | Required       | Participant | Mark an active contract as completed                   |
+| `PATCH`  | `/api/contracts/:id/approve-work`    | Required       | Client       | Approve submitted work, settle and complete the contract |
 | `PATCH`  | `/api/contracts/:id/cancel`          | Required       | Participant | Cancel an active contract                              |
 | `POST`   | `/api/reviews`                       | Required       | Participant | Submit review & rating for completed contract          |
 | `GET`    | `/api/reviews/user/:id`              | Required       | Any         | Get paginated reviews for a user                       |

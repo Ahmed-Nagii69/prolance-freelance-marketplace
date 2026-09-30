@@ -66,21 +66,42 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
                   </div>
 
                   <div class="row g-3">
-                    <div class="col-12 col-sm-6">
+                    <div class="col-12 col-sm-4">
                       <div class="pl-field">
-                        <label class="pl-label-inline" for="pf-budget">Budget (USD)</label>
+                        <label class="pl-label-inline" for="pf-min-budget">
+                          Minimum budget (USD)
+                        </label>
                         <input
-                          id="pf-budget"
+                          id="pf-min-budget"
                           type="number"
                           class="pl-input"
                           required
                           min="1"
-                          [(ngModel)]="form.budget"
-                          name="budget"
+                          [(ngModel)]="form.minBudget"
+                          name="minBudget"
                         />
                       </div>
                     </div>
-                    <div class="col-12 col-sm-6">
+                    <div class="col-12 col-sm-4">
+                      <div class="pl-field">
+                        <label class="pl-label-inline" for="pf-max-budget">
+                          Maximum budget (USD)
+                        </label>
+                        <input
+                          id="pf-max-budget"
+                          type="number"
+                          class="pl-input"
+                          required
+                          min="1"
+                          [(ngModel)]="form.maxBudget"
+                          name="maxBudget"
+                        />
+                        <span class="pl-hint">
+                          Freelancers bid anywhere inside this range.
+                        </span>
+                      </div>
+                    </div>
+                    <div class="col-12 col-sm-4">
                       <div class="pl-field">
                         <label class="pl-label-inline" for="pf-duration">Duration (days)</label>
                         <input
@@ -151,7 +172,7 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
                 <li>Share relevant constraints and context.</li>
                 <li>Define what done looks like.</li>
                 <li>Choose skills that freelancers search by.</li>
-                <li>Set a realistic duration and budget.</li>
+                <li>Set a realistic duration and budget range.</li>
               </ul>
             </div>
           </div>
@@ -174,7 +195,8 @@ export class ProjectForm {
   protected readonly form = {
     title: '',
     description: '',
-    budget: null as number | null,
+    minBudget: null as number | null,
+    maxBudget: null as number | null,
     durationDays: null as number | null,
   };
   protected skillsCsv = '';
@@ -196,7 +218,8 @@ export class ProjectForm {
       next: (project) => {
         this.form.title = project.title;
         this.form.description = project.description;
-        this.form.budget = project.budget;
+        this.form.minBudget = project.minBudget;
+        this.form.maxBudget = project.maxBudget;
         this.form.durationDays = project.durationDays;
         this.skillsCsv = project.skills.join(', ');
         this.loadingProject.set(false);
@@ -209,9 +232,17 @@ export class ProjectForm {
   }
 
   save(): void {
-    const { title, description, budget, durationDays } = this.form;
-    if (!title.trim() || !description.trim() || !budget || !durationDays || durationDays < 1) {
-      this.error.set('Title, description, budget and a positive duration are required.');
+    const { title, description, minBudget, maxBudget, durationDays } = this.form;
+    if (!title.trim() || !description.trim() || !durationDays || durationDays < 1) {
+      this.error.set('Title, description and a positive duration are required.');
+      return;
+    }
+    if (!minBudget || !maxBudget) {
+      this.error.set('Enter both a minimum and a maximum budget.');
+      return;
+    }
+    if (maxBudget < minBudget) {
+      this.error.set('The maximum budget cannot be lower than the minimum budget.');
       return;
     }
 
@@ -219,7 +250,14 @@ export class ProjectForm {
       .split(',')
       .map((part) => part.trim().toLowerCase())
       .filter((part) => part.length > 0);
-    const payload = { title, description, budget: Number(budget), durationDays: Number(durationDays), skills };
+    const payload = {
+      title,
+      description,
+      minBudget: Number(minBudget),
+      maxBudget: Number(maxBudget),
+      durationDays: Number(durationDays),
+      skills,
+    };
 
     this.submitting.set(true);
     this.error.set('');

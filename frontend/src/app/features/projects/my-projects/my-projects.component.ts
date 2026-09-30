@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ProjectService } from '../../../core/services/project.service';
 import { Project } from '../../../core/models/models';
-import { formatCurrency } from '../../../core/utils/format';
+import { formatCurrencyRange } from '../../../core/utils/format';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge.component';
 import { LoadingBlock } from '../../../shared/components/loading/loading.component';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state.component';
@@ -50,11 +50,17 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
                       >{{ project.title }}</a
                     >
                     <div class="pl-card__meta">
-                      {{ formatCurrency(project.budget) }} ·
+                      {{ formatCurrencyRange(project.minBudget, project.maxBudget) }} ·
                       {{ project.durationDays }} days
                     </div>
                   </div>
                   <pl-status-badge [status]="project.status" />
+                </div>
+                <div class="pl-stat mt-3" style="border-left-color: var(--pl-petrol)">
+                  <span class="pl-stat__value" style="font-size: 1.4rem">
+                    {{ proposalCount(project) }}
+                  </span>
+                  <span class="pl-stat__label">Proposals</span>
                 </div>
                 <div class="pl-card__foot mt-3">
                   @if (project.status === 'OPEN' || project.status === 'IN_PROGRESS') {
@@ -64,11 +70,13 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state.c
                       >View proposals</a
                     >
                   }
-                  <a
-                    [routerLink]="['/projects', project._id, 'edit']"
-                    class="pl-btn pl-btn--ghost pl-btn--sm"
-                    >Edit</a
-                  >
+                  @if (project.status === 'OPEN') {
+                    <a
+                      [routerLink]="['/projects', project._id, 'edit']"
+                      class="pl-btn pl-btn--ghost pl-btn--sm"
+                      >Edit</a
+                    >
+                  }
                   <a
                     [routerLink]="['/messages/project', project._id]"
                     class="pl-btn pl-btn--ghost pl-btn--sm"
@@ -94,12 +102,17 @@ export class MyProjects {
 
   protected readonly loading = signal(true);
   protected readonly projects = signal<Project[]>([]);
-  protected readonly formatCurrency = formatCurrency;
+  protected readonly formatCurrencyRange = formatCurrencyRange;
 
   constructor() {
     this.projectService.getMyProjects().subscribe({
       next: (data) => this.projects.set(data),
       error: () => void 0,
     }).add(() => this.loading.set(false));
+  }
+
+  /** Counted by the server, so the card matches the same number everywhere. */
+  protected proposalCount(project: Project): number {
+    return project.proposalCount ?? 0;
   }
 }

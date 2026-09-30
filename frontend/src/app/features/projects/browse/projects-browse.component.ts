@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProjectService } from '../../../core/services/project.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ProjectListData, ProjectQuery } from '../../../core/models/models';
-import { formatCurrency } from '../../../core/utils/format';
+import { formatCurrencyRange } from '../../../core/utils/format';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge.component';
 import { SkillTags } from '../../../shared/components/skill-tags/skill-tags.component';
 import { PaginationControls } from '../../../shared/components/pagination/pagination.component';
@@ -26,7 +27,11 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
         <p class="pl-kicker">Project marketplace</p>
         <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
           <h1 class="pl-headline mb-0">Browse projects</h1>
-          <a routerLink="/projects/new" class="pl-btn pl-btn--dark">Post a project</a>
+          @if (canPostProject()) {
+            <a routerLink="/projects/new" class="pl-btn pl-btn--dark">
+              Post a project
+            </a>
+          }
         </div>
       </div>
     </div>
@@ -56,6 +61,7 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
               <option value="">Any status</option>
               <option value="OPEN">Open</option>
               <option value="IN_PROGRESS">In progress</option>
+              <option value="DISPUTED">Under dispute</option>
               <option value="COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
@@ -104,7 +110,8 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
               name="sortBy"
             >
               <option value="createdAt">Newest first</option>
-              <option value="budget">Budget</option>
+              <option value="minBudget">Budget: lowest first</option>
+              <option value="maxBudget">Budget: highest first</option>
               <option value="durationDays">Duration</option>
               <option value="title">Title</option>
             </select>
@@ -166,14 +173,20 @@ import { LoadingBlock } from '../../../shared/components/loading/loading.compone
                     style="min-width: 190px"
                   >
                     <div class="pl-stat">
-                      <span class="pl-stat__value">{{ formatCurrency(project.budget) }}</span>
-                      <span class="pl-stat__label">Budget</span>
+                      <span class="pl-stat__value">{{ formatCurrencyRange(project.minBudget, project.maxBudget) }}</span>
+                      <span class="pl-stat__label">Budget range</span>
                     </div>
                     <div class="pl-stat" style="border-left-color: var(--pl-purple)">
                       <span class="pl-stat__value" style="font-size: 1.4rem">
                         {{ project.durationDays }} days
                       </span>
                       <span class="pl-stat__label">Duration</span>
+                    </div>
+                    <div class="pl-stat" style="border-left-color: var(--pl-petrol)">
+                      <span class="pl-stat__value" style="font-size: 1.4rem">
+                        {{ proposalCount(project) }}
+                      </span>
+                      <span class="pl-stat__label">Proposals</span>
                     </div>
                   </div>
                 </div>
@@ -202,11 +215,18 @@ export class ProjectsBrowse {
   private readonly projectService = inject(ProjectService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   protected readonly loading = signal(true);
   protected readonly projects = signal<ProjectListData['projects']>([]);
   protected readonly pagination = signal<ProjectListData['pagination'] | null>(
     null,
+  );
+
+  // Briefs belong to clients. A freelancer or an admin browsing the
+  // marketplace is not offered an action the server would refuse.
+  protected readonly canPostProject = computed(
+    () => this.auth.user()?.role === 'CLIENT',
   );
 
   protected readonly filters = signal<ProjectQuery>({
@@ -216,7 +236,7 @@ export class ProjectsBrowse {
     sortOrder: 'desc',
   });
 
-  protected readonly formatCurrency = formatCurrency;
+  protected readonly formatCurrencyRange = formatCurrencyRange;
 
   constructor() {
     const initialSkill = this.route.snapshot.queryParamMap.get('skill');
@@ -282,5 +302,10 @@ export class ProjectsBrowse {
       return value as { name: string };
     }
     return null;
+  }
+
+  /** The listing sends this for every project, so a card never has to guess. */
+  proposalCount(project: ProjectListData['projects'][number]): number {
+    return project.proposalCount ?? 0;
   }
 }

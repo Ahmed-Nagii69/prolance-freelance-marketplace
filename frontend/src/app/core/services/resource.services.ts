@@ -6,15 +6,35 @@ import {
   Contract,
   ContractListData,
   Proposal,
+  ProposalLimits,
   ProposalListData,
+  ProposalSeenView,
+  ProjectProposalListData,
   Review,
   ReviewListData,
   Message,
   MessageListData,
   ConversationListData,
+  Dispute,
+  DisputeListData,
+  DisputeOutcome,
+  SavedFreelancer,
   NotificationListData,
   WalletData,
 } from '../models/models';
+
+@Injectable({ providedIn: 'root' })
+export class PlatformService {
+  constructor(private readonly api: ApiService) {}
+
+  getSettings(): Observable<{ platformFeePercent: number }> {
+    return this.api.get<{ platformFeePercent: number }>('/platform');
+  }
+
+  updateSettings(platformFeePercent: number): Observable<{ platformFeePercent: number }> {
+    return this.api.put<{ platformFeePercent: number }>('/platform', { platformFeePercent });
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class ProposalService {
@@ -34,16 +54,43 @@ export class ProposalService {
     return this.api.get<ProposalListData>('/proposals/my', params);
   }
 
+  // The one allowed revision of a submitted bid. The server rejects a second
+  // call with PROPOSAL_NOT_EDITABLE.
+  updateProposal(
+    id: string,
+    payload: { coverLetter: string; price: number; deliveryTime: number },
+  ): Observable<Proposal> {
+    return this.api.patch<Proposal>(`/proposals/${id}`, payload);
+  }
+
   getProjectProposals(
     projectId: string,
     page = 1,
     limit = 20,
-  ): Observable<ProposalListData> {
-    const params = new HttpParams().set('page', page).set('limit', limit);
-    return this.api.get<ProposalListData>(
+    view: ProposalSeenView = 'ALL',
+  ): Observable<ProjectProposalListData> {
+    const params = new HttpParams()
+      .set('page', page)
+      .set('limit', limit)
+      .set('view', view);
+    return this.api.get<ProjectProposalListData>(
       `/proposals/projects/${projectId}`,
       params,
     );
+  }
+
+  /**
+   * The bid range the server will accept for this project. The form uses these
+   * numbers rather than computing its own, so what a freelancer is told and
+   * what the API enforces are always the same values.
+   */
+  getProposalLimits(projectId: string): Observable<ProposalLimits> {
+    return this.api.get<ProposalLimits>(`/proposals/limits/${projectId}`);
+  }
+
+  /** Records that the client who owns the project has read a proposal. */
+  markProposalAsSeen(id: string): Observable<Proposal> {
+    return this.api.patch<Proposal>(`/proposals/${id}/seen`, {});
   }
 
   getProposal(id: string): Observable<Proposal> {
@@ -72,10 +119,6 @@ export class ContractService {
     return this.api.get<Contract>(`/contracts/${id}`);
   }
 
-  completeContract(id: string): Observable<Contract> {
-    return this.api.patch<Contract>(`/contracts/${id}/complete`, {});
-  }
-
   cancelContract(id: string): Observable<Contract> {
     return this.api.patch<Contract>(`/contracts/${id}/cancel`, {});
   }
@@ -94,6 +137,84 @@ export class ContractService {
     return this.api.patch<Contract>(`/contracts/${id}/reject-work`, {
       reason: reason ?? '',
     });
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class DisputeService {
+  constructor(private readonly api: ApiService) {}
+
+  getDisputes(
+    status: string = 'ALL',
+    page = 1,
+    limit = 20,
+  ): Observable<DisputeListData> {
+    const params = new HttpParams()
+      .set('status', status)
+      .set('page', page)
+      .set('limit', limit);
+    return this.api.get<DisputeListData>('/disputes', params);
+  }
+
+  getContractDispute(contractId: string): Observable<{ dispute: Dispute | null }> {
+    return this.api.get<{ dispute: Dispute | null }>(
+      `/contracts/${contractId}/dispute`,
+    );
+  }
+
+  openDispute(
+    contractId: string,
+    reason: string,
+    description: string,
+  ): Observable<Dispute> {
+    return this.api.post<Dispute>(`/contracts/${contractId}/dispute`, {
+      reason,
+      description,
+    });
+  }
+
+  reviewDispute(id: string, note: string): Observable<Dispute> {
+    return this.api.patch<Dispute>(`/disputes/${id}/review`, { note });
+  }
+
+  resolveDispute(
+    id: string,
+    outcome: DisputeOutcome,
+    note: string,
+    amountToFreelancer?: number,
+  ): Observable<Dispute> {
+    return this.api.patch<Dispute>(`/disputes/${id}/resolve`, {
+      outcome,
+      note,
+      ...(amountToFreelancer === undefined
+        ? {}
+        : { amountToFreelancer }),
+    });
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class SavedFreelancerService {
+  constructor(private readonly api: ApiService) {}
+
+  getSavedFreelancers(): Observable<SavedFreelancer[]> {
+    return this.api.get<SavedFreelancer[]>('/saved-freelancers');
+  }
+
+  getSavedCount(): Observable<{ count: number }> {
+    return this.api.get<{ count: number }>('/saved-freelancers/count');
+  }
+
+  getSavedStatus(freelancerId: string): Observable<{ saved: boolean }> {
+    return this.api.get<{ saved: boolean }>(`/saved-freelancers/${freelancerId}`);
+  }
+
+  save(freelancerId: string): Observable<SavedFreelancer> {
+    return this.api.post<SavedFreelancer>(`/saved-freelancers/${freelancerId}`, {});
+  }
+
+  unsave(freelancerId: string): Observable<null> {
+    return this.api.delete<null>(`/saved-freelancers/${freelancerId}`);
   }
 }
 

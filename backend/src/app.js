@@ -10,7 +10,12 @@ const contractRoutes = require("./routes/contractRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const disputeRoutes = require("./routes/disputeRoutes");
+const savedFreelancerRoutes = require("./routes/savedFreelancerRoutes");
 const walletRoutes = require("./routes/walletRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
+const portfolioRoutes = require("./routes/portfolioRoutes");
+const platformRoutes = require("./routes/platformRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const sendResponse = require("./utils/response");
 const mongoose = require("mongoose");
@@ -46,7 +51,12 @@ app.use("/api/contracts", contractRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/disputes", disputeRoutes);
+app.use("/api/saved-freelancers", savedFreelancerRoutes);
 app.use("/api/wallet", walletRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/platform", platformRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 

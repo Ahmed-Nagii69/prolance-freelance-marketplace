@@ -161,8 +161,20 @@ const getProjectMessages = async (req, res, next) => {
       });
     }
 
-    const total = await Message.countDocuments({ project: req.params.projectId });
-    const messages = await Message.find({ project: req.params.projectId })
+    // The project client can read every conversation on their own project. A
+    // freelancer may only read the messages they are part of, so a proposer
+    // can never read the private conversation between the client and the
+    // freelancer who was actually selected.
+    const messageFilter = { project: req.params.projectId };
+    if (!isClient) {
+      messageFilter.$or = [
+        { sender: req.user._id },
+        { receiver: req.user._id },
+      ];
+    }
+
+    const total = await Message.countDocuments(messageFilter);
+    const messages = await Message.find(messageFilter)
       .populate("sender", "name role")
       .populate("receiver", "name role")
       .sort({ createdAt: 1 })

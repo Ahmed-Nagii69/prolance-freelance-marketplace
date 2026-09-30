@@ -79,7 +79,9 @@ import { extractApiMessage } from '../../../core/utils/http-error';
                       {{ message.sender.name }} ·
                       {{ formatDateTime(message.createdAt) }}
                     </div>
-                    <div style="white-space: pre-line">{{ message.content }}</div>
+                    <div style="white-space: pre-line; overflow-wrap: anywhere">
+                      {{ message.content }}
+                    </div>
                   </div>
                   @if (!own(message) && !message.isRead) {
                     <span class="pl-faint" style="font-size: 0.72rem">new</span>

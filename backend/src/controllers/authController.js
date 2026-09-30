@@ -5,6 +5,7 @@ const User = require("../models/User");
 const FreelancerProfile = require("../models/FreelancerProfile");
 const sendResponse = require("../utils/response");
 const { sendPasswordResetEmail } = require("../utils/mailer");
+const { refreshBanState, toBanInfo } = require("../utils/ban");
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -98,6 +99,7 @@ const register = async (req, res, next) => {
         skills: user.skills,
         profileImage: user.profileImage,
         balance: user.balance,
+        isBanned: false,
       },
       token,
     });
@@ -299,6 +301,19 @@ const resetPassword = async (req, res, next) => {
       );
     }
 
+    // This route mints a token without ever passing through the auth middleware,
+    // so it has to apply the ban rule itself. Refusing here means a suspended
+    // member cannot use a password reset to obtain a session.
+    if (await refreshBanState(updatedUser)) {
+      return sendResponse(
+        res,
+        403,
+        "Your account is temporarily suspended",
+        { ban: toBanInfo(updatedUser) },
+        { code: "ACCOUNT_BANNED" },
+      );
+    }
+
     return sendResponse(res, 200, "Password reset successfully", {
       token: generateToken(updatedUser),
     });
@@ -333,6 +348,18 @@ const login = async (req, res, next) => {
       });
     }
 
+    // A ban is enforced after the password check so that an unauthenticated
+    // caller cannot use the login form to discover whether an account exists.
+    if (await refreshBanState(user)) {
+      return sendResponse(
+        res,
+        403,
+        "Your account is temporarily suspended",
+        { ban: toBanInfo(user) },
+        { code: "ACCOUNT_BANNED" },
+      );
+    }
+
     const token = generateToken(user);
 
     return sendResponse(res, 200, "Login successful", {
@@ -345,6 +372,7 @@ const login = async (req, res, next) => {
         skills: user.skills,
         profileImage: user.profileImage,
         balance: user.balance,
+        isBanned: false,
       },
       token,
     });

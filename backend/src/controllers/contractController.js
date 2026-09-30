@@ -1,8 +1,22 @@
 const Contract = require("../models/Contract");
 const Project = require("../models/Project");
+const Transaction = require("../models/Transaction");
+const Dispute = require("../models/Dispute");
 const sendResponse = require("../utils/response");
 const { changeBalance } = require("../utils/ledger");
 const { createNotification } = require("../utils/notify");
+
+const findActiveDispute = (contractId) =>
+  Dispute.findOne({ contract: contractId, status: { $in: Dispute.ACTIVE_STATUSES } });
+
+const disputeInProgressResponse = (res) =>
+  sendResponse(
+    res,
+    409,
+    "This contract is under dispute review, an admin will settle the payment",
+    null,
+    { code: "CONTRACT_DISPUTED" },
+  );
 
 const settleContract = async ({ contract, projectId }) => {
   if (contract.paymentReleased) {
@@ -20,10 +34,15 @@ const settleContract = async ({ contract, projectId }) => {
       description: "Contract payment",
     });
   }
+  const hasStoredFee =
+    contract.platformFeeAmount > 0 || contract.platformFeePercent > 0;
+  const freelancerNetAmount = hasStoredFee
+    ? contract.freelancerNetAmount
+    : contract.agreedPrice;
   await changeBalance({
     userId: contract.freelancer,
     type: "CREDIT",
-    amount: contract.agreedPrice,
+    amount: freelancerNetAmount,
     contract: contract._id,
     project: projectId,
     description: "Payment received for completed contract",
@@ -45,7 +64,7 @@ const getContracts = async (req, res, next) => {
     }
     const total = await Contract.countDocuments(filter);
     const contracts = await Contract.find(filter)
-      .populate("project", "title status budget")
+      .populate("project", "title status minBudget maxBudget")
       .populate("proposal", "coverLetter price deliveryTime")
       .populate("client", "name email profileImage")
       .populate("freelancer", "name email profileImage")
@@ -72,7 +91,7 @@ const getContracts = async (req, res, next) => {
 const getContractById = async (req, res, next) => {
   try {
     const contract = await Contract.findById(req.params.id)
-      .populate("project", "title status budget client")
+      .populate("project", "title status minBudget maxBudget client")
       .populate("proposal", "coverLetter price deliveryTime")
       .populate("client", "name email profileImage")
       .populate("freelancer", "name email profileImage");
@@ -120,6 +139,10 @@ const submitWork = async (req, res, next) => {
         null,
         { code: "FORBIDDEN" },
       );
+    }
+
+    if (await findActiveDispute(contract._id)) {
+      return disputeInProgressResponse(res);
     }
 
     if (contract.status === "WORK_SUBMITTED") {
@@ -211,6 +234,10 @@ const approveWork = async (req, res, next) => {
       );
     }
 
+    if (await findActiveDispute(contract._id)) {
+      return disputeInProgressResponse(res);
+    }
+
     await settleContract({ contract, projectId: contract.project._id });
 
     contract.status = "COMPLETED";
@@ -227,11 +254,12 @@ const approveWork = async (req, res, next) => {
       message: `Your submitted work for "${contract.project.title}" was approved`,
       link: `/contracts/${contract._id}`,
     });
+    const freelancerNetAmount = contract.freelancerNetAmount || contract.agreedPrice;
     await createNotification({
       user: contract.freelancer,
       actor: req.user._id,
       type: "PAYMENT_RECEIVED",
-      message: `You received ${contract.agreedPrice} for "${contract.project.title}"`,
+      message: `You received ${freelancerNetAmount} for "${contract.project.title}"`,
       link: `/contracts/${contract._id}`,
     });
 
@@ -264,6 +292,10 @@ const rejectWork = async (req, res, next) => {
         null,
         { code: "FORBIDDEN" },
       );
+    }
+
+    if (await findActiveDispute(contract._id)) {
+      return disputeInProgressResponse(res);
     }
 
     if (contract.status !== "WORK_SUBMITTED") {
@@ -315,66 +347,6 @@ const rejectWork = async (req, res, next) => {
   }
 };
 
-const completeContract = async (req, res, next) => {
-  try {
-    const contract = await Contract.findById(req.params.id).populate("project");
-
-    if (!contract) {
-      return sendResponse(res, 404, "Contract not found", null, {
-        code: "CONTRACT_NOT_FOUND",
-      });
-    }
-
-    const isClient = contract.client.toString() === req.user._id.toString();
-    const isFreelancer =
-      contract.freelancer.toString() === req.user._id.toString();
-
-    if (!isClient && !isFreelancer) {
-      return sendResponse(
-        res,
-        403,
-        "You are not allowed to complete this contract",
-        null,
-        { code: "FORBIDDEN" },
-      );
-    }
-
-    if (contract.status !== "ACTIVE" && contract.status !== "WORK_SUBMITTED") {
-      return sendResponse(
-        res,
-        409,
-        "Contract is not active or awaiting approval",
-        null,
-        { code: "CONTRACT_NOT_ACTIVE" },
-      );
-    }
-
-    if (!contract.paymentReleased) {
-      await settleContract({ contract, projectId: contract.project._id });
-    }
-
-    contract.status = "COMPLETED";
-    await contract.save();
-
-    await Project.findByIdAndUpdate(contract.project._id, {
-      status: "COMPLETED",
-    });
-
-    const counterparty = isClient ? contract.freelancer : contract.client;
-    await createNotification({
-      user: counterparty,
-      actor: req.user._id,
-      type: "CONTRACT_UPDATED",
-      message: `${req.user.name} marked "${contract.project.title}" as completed`,
-      link: `/contracts/${contract._id}`,
-    });
-
-    return sendResponse(res, 200, "Contract completed successfully", contract);
-  } catch (error) {
-    return next(error);
-  }
-};
-
 const cancelContract = async (req, res, next) => {
   try {
     const contract = await Contract.findById(req.params.id).populate("project");
@@ -398,6 +370,13 @@ const cancelContract = async (req, res, next) => {
       );
     }
 
+    // Cancelling refunds the escrow outright, so it is closed off while a
+    // dispute is running: letting either side cancel would settle the money
+    // behind the admin's back. The dispute has to be resolved first.
+    if (await findActiveDispute(contract._id)) {
+      return disputeInProgressResponse(res);
+    }
+
     if (contract.status !== "ACTIVE") {
       return sendResponse(res, 409, "Contract is not active", null, {
         code: "CONTRACT_NOT_ACTIVE",
@@ -418,6 +397,32 @@ const cancelContract = async (req, res, next) => {
 
     contract.status = "CANCELLED";
     await contract.save();
+
+    // A cancellation settles the money on its own, so any dispute that is still
+    // open on this contract is closed without a financial resolution. The guard
+    // above means this finds nothing for a contract disputed through the current
+    // flow, because a dispute now also holds the contract in DISPUTED; it stays
+    // for rows written before that state existed.
+    const activeDisputes = await Dispute.find({
+      contract: contract._id,
+      status: { $in: Dispute.ACTIVE_STATUSES },
+    }).select("_id");
+    if (activeDisputes.length > 0) {
+      await Dispute.updateMany(
+        { _id: { $in: activeDisputes.map((dispute) => dispute._id) } },
+        {
+          $set: { status: "REJECTED" },
+          $push: {
+            statusHistory: {
+              status: "REJECTED",
+              note: "Contract cancelled by one of the parties",
+              by: req.user._id,
+              at: new Date(),
+            },
+          },
+        },
+      );
+    }
 
     await Project.findByIdAndUpdate(contract.project._id, {
       status: "CANCELLED",
@@ -442,11 +447,11 @@ const cancelContract = async (req, res, next) => {
 };
 
 module.exports = {
+  settleContract,
   getContracts,
   getContractById,
   submitWork,
   approveWork,
   rejectWork,
-  completeContract,
   cancelContract,
 };

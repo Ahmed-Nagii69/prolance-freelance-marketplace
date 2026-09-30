@@ -14,10 +14,26 @@ const projectSchema = new mongoose.Schema(
       trim: true,
       maxlength: 5000,
     },
-    budget: {
+    minBudget: {
       type: Number,
       required: true,
       min: 0,
+    },
+    maxBudget: {
+      type: Number,
+      required: true,
+      min: 0,
+      // The budget is a range, so the two bounds have to stay ordered. Declared
+      // on the path rather than in a document hook so it also fires on a partial
+      // update, where Mongoose runs path validators but not document middleware.
+      // `this.minBudget` already reflects the incoming value on such an update.
+      validate: {
+        validator: function isNotBelowMin(value) {
+          return this.minBudget === undefined || value >= this.minBudget;
+        },
+        message:
+          "The maximum budget cannot be lower than the minimum budget",
+      },
     },
     durationDays: {
       type: Number,
@@ -34,7 +50,13 @@ const projectSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+      enum: [
+        "OPEN",
+        "IN_PROGRESS",
+        "DISPUTED",
+        "COMPLETED",
+        "CANCELLED",
+      ],
       default: "OPEN",
     },
     client: {
@@ -48,5 +70,6 @@ const projectSchema = new mongoose.Schema(
 
 projectSchema.index({ client: 1, createdAt: -1 });
 projectSchema.index({ status: 1, createdAt: -1 });
+projectSchema.index({ minBudget: 1, maxBudget: 1 });
 
 module.exports = mongoose.model("Project", projectSchema);
