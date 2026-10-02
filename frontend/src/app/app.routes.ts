@@ -24,6 +24,7 @@ import { AdminAnalytics } from './features/admin/admin-analytics/admin-analytics
 import { AdminUsers } from './features/admin/admin-users/admin-users.component';
 import { AdminDisputes } from './features/admin/admin-disputes/admin-disputes.component';
 import { MyDashboard } from './features/analytics/my-dashboard/my-dashboard.component';
+import { Contact } from './features/contact/contact.component';
 
 export const routes: Routes = [
   {
@@ -31,6 +32,8 @@ export const routes: Routes = [
     component: AppShell,
     children: [
       { path: '', component: Home },
+      // Public support page, reachable with or without a session.
+      { path: 'contact', component: Contact },
       {
         path: 'dashboard',
         component: MyDashboard,

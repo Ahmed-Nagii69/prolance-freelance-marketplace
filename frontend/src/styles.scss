@@ -65,6 +65,7 @@ select {
 a {
   color: var(--pl-petrol);
   text-decoration: none;
+  transition: color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 a:hover {
@@ -241,9 +242,10 @@ tabler-icon {
   text-align: center;
   user-select: none;
   transition:
-    background-color 140ms ease,
-    color 140ms ease,
-    border-color 140ms ease;
+    background-color 160ms cubic-bezier(0.16, 0.84, 0.34, 1),
+    color 160ms cubic-bezier(0.16, 0.84, 0.34, 1),
+    border-color 160ms cubic-bezier(0.16, 0.84, 0.34, 1),
+    transform 160ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-btn:disabled {
@@ -259,6 +261,7 @@ tabler-icon {
 .pl-btn--dark:hover:not(:disabled) {
   background-color: var(--pl-brass);
   color: var(--pl-espresso);
+  transform: translateY(-1px);
 }
 
 .pl-btn--accent {
@@ -269,6 +272,7 @@ tabler-icon {
 .pl-btn--accent:hover:not(:disabled) {
   background-color: var(--pl-brass);
   color: var(--pl-espresso);
+  transform: translateY(-1px);
 }
 
 .pl-btn--purple {
@@ -279,6 +283,7 @@ tabler-icon {
 .pl-btn--purple:hover:not(:disabled) {
   background-color: var(--pl-brass);
   color: var(--pl-espresso);
+  transform: translateY(-1px);
 }
 
 .pl-btn--outline {
@@ -301,6 +306,7 @@ tabler-icon {
 .pl-btn--outline-inverse:hover:not(:disabled) {
   border-color: var(--pl-ivory);
   background-color: rgba(245, 241, 232, 0.12);
+  color: var(--pl-paper);
 }
 
 .pl-btn--danger {
@@ -628,6 +634,10 @@ tabler-icon {
   vertical-align: middle;
 }
 
+.pl-table tbody tr {
+  transition: background-color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
+}
+
 .pl-table tbody tr:hover {
   background-color: var(--pl-ivory-soft);
 }
@@ -733,6 +743,7 @@ tabler-icon {
   padding: 0;
   opacity: 0.7;
   line-height: 1;
+  transition: opacity 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-toast__close:hover {
@@ -785,10 +796,14 @@ tabler-icon {
   font-size: 1.6rem;
   line-height: 1;
   color: var(--pl-ink);
+  transition:
+    color 150ms cubic-bezier(0.16, 0.84, 0.34, 1),
+    transform 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-brand:hover {
   color: var(--pl-ink);
+  transform: scale(1.02);
 }
 
 .pl-brand__dot {
@@ -806,6 +821,7 @@ tabler-icon {
   font-weight: 600;
   color: var(--pl-ink-soft);
   letter-spacing: 0.02em;
+  transition: color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-nav__link:hover {
@@ -1022,7 +1038,7 @@ tabler-icon {
   border-bottom: 1px solid var(--pl-line);
   padding: 0.7rem 1rem;
   cursor: pointer;
-  color: var(--pl-ink);
+  transition: background-color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-notif__item:last-child {
@@ -1166,7 +1182,7 @@ tabler-icon {
   font-weight: 600;
   color: var(--pl-ink);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-usermenu__item:last-child {
@@ -1279,6 +1295,7 @@ tabler-icon {
 
 .pl-footer a {
   color: rgba(245, 241, 232, 0.75);
+  transition: color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-footer a:hover {
@@ -1307,38 +1324,103 @@ tabler-icon {
 }
 
 /* ------------------------------------------------------------------ */
-/* Hero & feature spots                                                */
+/* Hero                                                                */
 /* ------------------------------------------------------------------ */
 
+/*
+ * The hero is a solid deep petrol band. Depth comes from the layered
+ * composition on the right and the type scale, not from a colour wash.
+ */
 .pl-hero {
-  padding-block: clamp(56px, 9vw, 110px) 72px;
-  border-bottom: 1px solid var(--pl-line);
   position: relative;
+  padding-block: clamp(64px, 8vw, 120px) clamp(72px, 9vw, 128px);
+  background-color: var(--pl-petrol-deep);
+  /* Perspective layers and rotated fragments can extend past the box, which
+     would otherwise open a horizontal scrollbar on the whole document. */
+  overflow: hidden;
 }
 
-.pl-hero__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem 1.4rem;
-  margin-top: 1.6rem;
+/* A hairline grid, drawn with two 1px line gradients. This is a flat texture
+   at 4% opacity, not a colour gradient, and it sits behind everything. */
+.pl-hero__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(245, 241, 232, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 241, 232, 0.05) 1px, transparent 1px);
+  background-size: 68px 68px;
+  -webkit-mask-image: radial-gradient(120% 90% at 78% 18%, #000 12%, transparent 72%);
+  mask-image: radial-gradient(120% 90% at 78% 18%, #000 12%, transparent 72%);
+}
+
+.pl-hero__title {
+  margin-bottom: 1.1rem;
+}
+
+/* Each word is raised and faded independently, so the headline assembles
+   rather than simply appearing. */
+.pl-hero__word {
+  display: inline-block;
+  opacity: 0;
+  transform: translate3d(0, 0.55em, 0);
+  animation: pl-hero-word 900ms cubic-bezier(0.16, 0.84, 0.34, 1) forwards;
+  animation-delay: calc(120ms + var(--i) * 78ms);
+}
+
+@keyframes pl-hero-word {
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.pl-hero__lede {
+  opacity: 0;
+  animation: pl-hero-rise 900ms cubic-bezier(0.16, 0.84, 0.34, 1) 620ms forwards;
+}
+
+@keyframes pl-hero-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .pl-hero__cta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.8rem;
-  margin-top: 1.8rem;
+  margin-top: 2rem;
+}
+
+.pl-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 1.9rem;
 }
 
 .pl-hero__meta-link {
-  color: var(--pl-ink-faint);
+  color: rgba(245, 241, 232, 0.62);
   font-size: 0.85rem;
-  transition: color 140ms ease;
+  transition: color 160ms ease;
 }
 
 .pl-hero__meta-link:hover {
-  color: var(--pl-petrol);
+  color: var(--pl-ivory);
+}
+
+.pl-hero__meta-divider {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--pl-brass);
 }
 
 .pl-hero__loading {
@@ -1348,31 +1430,748 @@ tabler-icon {
   font-size: 0.9rem;
 }
 
-.pl-feature {
-  padding: 1.4rem 0;
+/* ------------------------------------------------------------------ */
+/* Hero stage: the brief-to-review composition                          */
+/* ------------------------------------------------------------------ */
+
+.pl-hero__stage {
+  --pl-px: 0;
+  --pl-py: 0;
+  position: relative;
+  height: clamp(400px, 42vw, 520px);
+  perspective: 1100px;
+  transform-style: preserve-3d;
+}
+
+/* The spine and its travelling dot carry the sequence from Brief to Review
+   without drawing a flowchart: one line, one point of light moving along it.
+   The dot rides a full-height wrapper so it travels exactly the length of the
+   spine at any stage height, animating only transform. */
+.pl-stage__spine {
+  position: absolute;
+  left: 8px;
+  top: 6%;
+  bottom: 6%;
+  width: 1px;
+  background-color: rgba(245, 241, 232, 0.16);
+}
+
+.pl-stage__run {
+  position: absolute;
+  inset: 0;
+  animation: pl-stage-pulse 7s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.pl-stage__pulse {
+  position: absolute;
+  top: 0;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--pl-brass);
+}
+
+@keyframes pl-stage-pulse {
+  0% {
+    transform: translate3d(0, -6px, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 100%, 0);
+    opacity: 0;
+  }
+}
+
+.pl-stage__layer {
+  position: absolute;
+  /* Pointer offset scaled by this layer's --depth, so the layers separate as
+     the cursor moves. The value is a viewport fraction, not a measurement, so
+     no layout is read to produce it. */
+  transform: translate3d(
+    calc(var(--pl-px) * var(--depth) * -1px),
+    calc(var(--pl-py) * var(--depth) * -0.5px),
+    var(--z)
+  );
+}
+
+.pl-stage__layer--brief {
+  --z: 34px;
+  left: 4%;
+  top: 1%;
+}
+
+.pl-stage__layer--proposal {
+  --z: 6px;
+  left: 38%;
+  top: 17%;
+}
+
+.pl-stage__layer--contract {
+  --z: -18px;
+  left: 13%;
+  top: 36%;
+}
+
+.pl-stage__layer--delivery {
+  --z: 2px;
+  left: 44%;
+  top: 54%;
+}
+
+.pl-stage__layer--review {
+  --z: 46px;
+  left: 18%;
+  top: 74%;
+}
+
+/* Inner element carries the idle float and is the card surface itself, so the
+   parallax transform on the outer element and the looping animation never fight
+   over one property. */
+.pl-stage__float {
+  width: 214px;
+  max-width: 100%;
+  background-color: var(--pl-ivory-soft);
+  border: 1px solid var(--pl-line);
+  border-radius: var(--pl-radius-lg);
+  box-shadow:
+    0 1px 2px rgba(12, 20, 20, 0.22),
+    0 18px 34px -18px rgba(9, 22, 21, 0.5);
+  transform: var(--tilt);
+  animation: pl-stage-float var(--dur) ease-in-out var(--delay) infinite;
+  will-change: transform;
+}
+
+@keyframes pl-stage-float {
+  0%,
+  100% {
+    transform: var(--tilt) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: var(--tilt) translate3d(0, -11px, 0);
+  }
+}
+
+.pl-stage__index {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--pl-brass);
+  padding: 0.85rem 1.05rem 0;
+}
+
+.pl-stage__label {
+  font-family: var(--pl-font-display);
+  font-size: 1.08rem;
+  color: var(--pl-espresso);
+  padding: 0.1rem 1.05rem 0;
+  margin: 0;
+}
+
+.pl-stage__detail {
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  color: var(--pl-ink-soft);
+  padding: 0 1.05rem 0.9rem;
+  margin: 0.2rem 0 0;
+}
+
+/* Below the two-column breakpoint the 3D stage is dropped rather than shrunk
+   into something unreadable; the flat flow strip below takes over. */
+.pl-hero__flow {
+  display: none;
+  list-style: none;
+  margin: 2.4rem 0 0;
+  padding: 0;
+  gap: 0.5rem;
+}
+
+.pl-hero__flow li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(245, 241, 232, 0.72);
+}
+
+.pl-hero__flow li + li::before {
+  content: '';
+  width: 14px;
+  height: 1px;
+  background-color: rgba(245, 241, 232, 0.28);
+}
+
+/* ------------------------------------------------------------------ */
+/* Scroll reveal (shared directive)                                    */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Only applied by the directive when the browser can animate, so reduced-motion
+ * and unsupported browsers render the content plainly rather than leaving it
+ * hidden. The transition is opacity and transform only.
+ */
+.pl-reveal {
+  opacity: 0;
+  transform: translate3d(0, var(--pl-reveal-shift, 18px), 0);
+  transition:
+    opacity 720ms cubic-bezier(0.16, 0.84, 0.34, 1) var(--pl-reveal-delay, 0ms),
+    transform 720ms cubic-bezier(0.16, 0.84, 0.34, 1) var(--pl-reveal-delay, 0ms);
+}
+
+.pl-reveal.is-revealed {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/*
+ * The hero and the closing band are dark, where the default petrol focus ring
+ * would barely separate from the background, so those surfaces get the brass
+ * accent instead. The ring itself is still the global one, only its colour
+ * changes.
+ */
+.pl-hero :focus-visible,
+.pl-closing :focus-visible {
+  outline-color: var(--pl-brass);
+}
+
+/* ------------------------------------------------------------------ */
+/* Home: your path                                                     */
+/* ------------------------------------------------------------------ */
+
+.pl-step {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.pl-step__number {
+  font-family: var(--pl-font-display);
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--pl-brass);
+  margin-bottom: 0.5rem;
+}
+
+.pl-step__title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin: 0 0 0.35rem;
+}
+
+.pl-step__detail {
+  color: var(--pl-ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.pl-step__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding-top: 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pl-petrol);
+}
+
+/* The arrow leads on hover and the rule draws in from the left, rather than
+   lifting the whole card. */
+.pl-step__cta svg {
+  transition: transform 220ms cubic-bezier(0.16, 0.84, 0.34, 1);
+}
+
+.pl-step:hover .pl-step__cta svg,
+.pl-step:focus-visible .pl-step__cta svg {
+  transform: translateX(4px);
+}
+
+/* ------------------------------------------------------------------ */
+/* Home: curated project showcase                                      */
+/* ------------------------------------------------------------------ */
+
+.pl-showcase__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.2rem;
+  margin-bottom: 2.4rem;
+}
+
+.pl-showcase__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pl-petrol);
+  border-bottom: 1px solid var(--pl-line-strong);
+  padding-bottom: 0.3rem;
+  text-decoration: none;
+  transition: border-color 180ms ease;
+}
+
+.pl-showcase__all svg {
+  transition: transform 220ms cubic-bezier(0.16, 0.84, 0.34, 1);
+}
+
+.pl-showcase__all:hover,
+.pl-showcase__all:focus-visible {
+  color: var(--pl-espresso);
+  border-color: var(--pl-brass);
+}
+
+.pl-showcase__all:hover svg,
+.pl-showcase__all:focus-visible svg {
+  transform: translateX(4px);
+}
+
+.pl-showcase {
   border-top: 1px solid var(--pl-line);
 }
 
-.pl-feature:first-child {
-  border-top: 0;
+/* Rows rather than a grid of boxes: the list keeps its rhythm and the
+   separator does the work a card border would otherwise do. */
+.pl-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+  padding: 2rem 1rem 2rem 1.4rem;
+  text-decoration: none;
+  border-bottom: 1px solid var(--pl-line);
+  /* The reveal directive also transitions opacity and transform. This rule has
+     to name those properties as well, because setting `transition` here would
+     otherwise replace the reveal's and the row would appear without fading. */
+  transition:
+    background-color 220ms ease,
+    opacity 720ms cubic-bezier(0.16, 0.84, 0.34, 1) var(--pl-reveal-delay, 0ms),
+    transform 720ms cubic-bezier(0.16, 0.84, 0.34, 1) var(--pl-reveal-delay, 0ms);
 }
 
-.pl-feature__icon {
-  color: var(--pl-brass);
-  margin-bottom: 0.8rem;
+.pl-entry__rule {
+  position: absolute;
+  left: 0;
+  top: 2rem;
+  bottom: 2rem;
+  width: 2px;
+  background-color: var(--pl-brass);
+  transform: scaleY(0.18);
+  transform-origin: top;
+  transition: transform 320ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
-.pl-feature__title {
-  font-weight: 700;
-  font-size: 1.02rem;
-  margin: 0 0 0.4rem;
+.pl-entry:hover,
+.pl-entry:focus-visible {
+  background-color: var(--pl-paper);
 }
 
-.pl-feature__body {
-  color: var(--pl-ink-soft);
-  font-size: 0.92rem;
-  line-height: 1.65;
+.pl-entry:hover .pl-entry__rule,
+.pl-entry:focus-visible .pl-entry__rule {
+  transform: scaleY(1);
+}
+
+.pl-entry__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.pl-entry__title {
+  font-family: var(--pl-font-display);
+  font-weight: 400;
+  font-size: clamp(1.25rem, 2.1vw, 1.65rem);
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  color: var(--pl-espresso);
   margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pl-entry__excerpt {
+  color: var(--pl-ink-soft);
+  font-size: 0.93rem;
+  line-height: 1.7;
+  max-width: 62ch;
+  margin: 0 0 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.pl-entry__tags {
+  margin: 0;
+}
+
+.pl-entry__aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.2rem 1.6rem;
+}
+
+.pl-entry__budget {
+  font-family: var(--pl-font-display);
+  font-size: 1.3rem;
+  color: var(--pl-petrol);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pl-entry__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  margin: 0;
+}
+
+.pl-entry__facts div {
+  display: flex;
+  flex-direction: column;
+}
+
+.pl-entry__facts dt {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pl-ink-faint);
+}
+
+.pl-entry__facts dd {
+  font-size: 0.92rem;
+  color: var(--pl-ink);
+  margin: 0.1rem 0 0;
+}
+
+.pl-entry__go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border: 1px solid var(--pl-line-strong);
+  border-radius: 50%;
+  color: var(--pl-petrol);
+  opacity: 0.55;
+  transition:
+    opacity 220ms ease,
+    transform 320ms cubic-bezier(0.16, 0.84, 0.34, 1),
+    border-color 220ms ease;
+}
+
+.pl-entry:hover .pl-entry__go,
+.pl-entry:focus-visible .pl-entry__go {
+  opacity: 1;
+  border-color: var(--pl-brass);
+  transform: translate(3px, -3px);
+}
+
+@media (min-width: 768px) {
+  .pl-entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 2.4rem;
+    padding-inline: 1.6rem;
+  }
+
+  .pl-entry__main {
+    min-width: 0;
+  }
+
+  /* The aside wraps internally, and is capped so a long currency range can
+     never widen the row past the container. */
+  .pl-entry__aside {
+    justify-content: flex-end;
+    min-width: 260px;
+    max-width: 100%;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Home: how it works                                                  */
+/* ------------------------------------------------------------------ */
+
+.pl-journey {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A single rule threaded behind the numerals, so the three steps read as one
+   progression rather than three separate cards. */
+.pl-journey__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1.4rem;
+  padding-block: 1.9rem;
+  border-top: 1px solid rgba(245, 241, 232, 0.16);
+}
+
+.pl-journey__step:first-child {
+  border-top: 0;
+  padding-top: 0.4rem;
+}
+
+.pl-journey__step:last-child {
+  padding-bottom: 0.4rem;
+}
+
+.pl-journey__num {
+  font-family: var(--pl-font-display);
+  font-size: clamp(2.6rem, 6vw, 3.8rem);
+  line-height: 0.86;
+  color: var(--pl-brass);
+  opacity: 0.9;
+}
+
+.pl-journey__title {
+  font-family: var(--pl-font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--pl-ivory);
+  margin: 0 0 0.5rem;
+}
+
+.pl-journey__body {
+  color: rgba(245, 241, 232, 0.7);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  max-width: 52ch;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Home: closing call to action                                        */
+/* ------------------------------------------------------------------ */
+
+.pl-closing {
+  background-color: var(--pl-espresso);
+  color: var(--pl-ivory);
+  padding-block: clamp(64px, 8vw, 104px);
+}
+
+.pl-closing__head {
+  margin-bottom: 2.6rem;
+  max-width: 46ch;
+}
+
+.pl-closing__grid {
+  --bs-gutter-x: 1.5rem;
+}
+
+.pl-closing__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 2rem;
+  border: 1px solid rgba(245, 241, 232, 0.16);
+  background-color: rgba(245, 241, 232, 0.02);
+  transition:
+    border-color 260ms ease,
+    background-color 260ms ease;
+}
+
+.pl-closing__card:hover {
+  border-color: rgba(169, 130, 69, 0.55);
+  background-color: rgba(245, 241, 232, 0.04);
+}
+
+.pl-closing__card h2,
+.pl-closing__card .pl-h2 {
+  color: var(--pl-ivory);
+  margin: 0;
+}
+
+.pl-closing__audience {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pl-brass);
+  margin: 0;
+}
+
+.pl-closing__body {
+  color: rgba(245, 241, 232, 0.72);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin: 0 0 0.9rem;
+  max-width: 44ch;
+}
+
+.pl-closing__card .pl-btn {
+  margin-top: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/* Contact page                                                        */
+/* ------------------------------------------------------------------ */
+
+.pl-contact-hero {
+  padding-block: clamp(48px, 6vw, 84px) clamp(64px, 8vw, 104px);
+  border-bottom: 1px solid var(--pl-line);
+}
+
+.pl-contact-topics {
+  list-style: none;
+  margin: 2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Buttons rather than links: choosing a topic fills the form instead of
+   navigating away. */
+.pl-contact-topic {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.9rem 0.7rem 1rem;
+  background: none;
+  border: 0;
+  border-left: 2px solid var(--pl-line);
+  cursor: pointer;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease;
+}
+
+.pl-contact-topic:hover {
+  border-left-color: var(--pl-stone-dark);
+  background-color: var(--pl-ivory-soft);
+}
+
+.pl-contact-topic.is-selected {
+  border-left-color: var(--pl-brass);
+  background-color: var(--pl-ivory-soft);
+}
+
+.pl-contact-topic__label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--pl-ink);
+}
+
+.pl-contact-topic__hint {
+  font-size: 0.82rem;
+  color: var(--pl-ink-faint);
+}
+
+.pl-contact-form {
+  padding: clamp(1.4rem, 3vw, 2.2rem);
+}
+
+.pl-contact-count {
+  display: block;
+  margin-top: 0.35rem;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--pl-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-contact-note {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  margin: 1.4rem 0 0;
+}
+
+.pl-contact-done {
+  text-align: center;
+  padding-block: 1.6rem;
+}
+
+.pl-contact-done__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 1rem;
+  border-radius: 50%;
+  border: 1px solid rgba(36, 92, 90, 0.28);
+  background-color: rgba(36, 92, 90, 0.08);
+  color: var(--pl-petrol);
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion and layout guards                                            */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The stage is the only place 3D transforms are used. Below the two-column
+ * breakpoint it is removed in favour of the flat flow strip, so small screens
+ * carry no perspective, no parallax and no looping transforms.
+ */
+@media (max-width: 991.98px) {
+  .pl-hero__stage {
+    display: none;
+  }
+
+  .pl-hero__flow {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-hero__word,
+  .pl-hero__lede {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+
+  .pl-stage__run,
+  .pl-stage__float {
+    animation: none;
+  }
+
+  /* The dot has no purpose without motion, so it is hidden rather than parked
+     at the top of the spine. */
+  .pl-stage__pulse {
+    opacity: 0;
+  }
+
+  /* Transitions are kept but shortened, so focus and hover feedback survives
+     without any movement. */
+  .pl-reveal,
+  .pl-reveal.is-revealed {
+    transition-duration: 1ms;
+  }
+
+  .pl-entry__rule,
+  .pl-entry__go,
+  .pl-showcase__all svg,
+  .pl-step__cta svg {
+    transition: none;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -1470,6 +2269,7 @@ tabler-icon {
   color: var(--pl-ink-soft);
   font-size: 0.9rem;
   font-weight: 600;
+  transition: color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-faded-link:hover {
@@ -1553,6 +2353,7 @@ tabler-icon {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  transition: color 150ms cubic-bezier(0.16, 0.84, 0.34, 1);
 }
 
 .pl-tab:hover {

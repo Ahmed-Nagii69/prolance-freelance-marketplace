@@ -22,6 +22,7 @@ import { RouterLink } from '@angular/router';
             <p class="pl-kicker" style="color: rgba(245,241,232,.55)">Explore</p>
             <ul class="list-unstyled d-flex flex-column gap-2 mb-0">
               <li><a routerLink="/projects">Projects</a></li>
+              <li><a routerLink="/contact">Contact / Support</a></li>
               <li><a routerLink="/auth/register">Join ProLance</a></li>
             </ul>
           </div>

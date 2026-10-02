@@ -38,6 +38,9 @@ import { Notification, User } from '../../core/models/models';
             <a routerLink="/projects" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }" class="pl-nav__link">
               Projects
             </a>
+            <a routerLink="/contact" routerLinkActive="is-active" class="pl-nav__link">
+              Contact
+            </a>
 
             @if (user(); as currentUser) {
               @if (currentUser.role === 'CLIENT') {

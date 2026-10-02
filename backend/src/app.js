@@ -16,6 +16,7 @@ const walletRoutes = require("./routes/walletRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 const portfolioRoutes = require("./routes/portfolioRoutes");
 const platformRoutes = require("./routes/platformRoutes");
+const contactRoutes = require("./routes/contactRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const sendResponse = require("./utils/response");
 const mongoose = require("mongoose");
@@ -57,6 +58,7 @@ app.use("/api/wallet", walletRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/platform", platformRoutes);
+app.use("/api/contact", contactRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 

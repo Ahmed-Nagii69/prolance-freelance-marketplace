@@ -45,7 +45,6 @@ cd frontend
 npm install
 npm start              # http://localhost:4200 (proxies to the API via environments)
 npm run build          # production build to dist/frontend
-npm test               # unit tests
 ```
 
 The API base URL lives in `frontend/src/environments/environment.ts` (`apiUrl`).
